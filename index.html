@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#c45f5e" />
+    <meta
+      name="description"
+      content="Chia tiền bill đồ ăn nhanh, rõ ràng và công bằng."
+    />
+    <title>Chia Bill</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Trang chủ Chia Bill">
+          <span class="brand-mark" aria-hidden="true">₫</span>
+          <span>Chia Bill</span>
+        </a>
+        <div class="save-status" id="save-status">Đã lưu trên thiết bị</div>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div>
+            <p class="eyebrow">Ăn chung, tính riêng</p>
+            <h1>Chia bill trong<br /><span>một nốt nhạc.</span></h1>
+            <p class="hero-copy">
+              Mỗi người trả đúng món của mình. Phí giao hàng và ưu đãi được chia
+              đều, minh bạch đến từng đồng.
+            </p>
+          </div>
+          <div class="hero-sticker" aria-hidden="true">
+            <span>Rõ ràng</span>
+            <strong>100%</strong>
+          </div>
+        </section>
+
+        <section class="workspace" aria-label="Thông tin bill">
+          <div class="main-column">
+            <article class="panel upload-panel">
+              <div class="section-heading">
+                <div>
+                  <span class="step">01</span>
+                  <h2>Tải ảnh bill</h2>
+                </div>
+                <span class="local-badge">Xử lý trên thiết bị</span>
+              </div>
+
+              <input
+                id="bill-image-input"
+                class="visually-hidden"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+              />
+              <label class="upload-dropzone" id="upload-dropzone" for="bill-image-input">
+                <span class="upload-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="img">
+                    <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+                  </svg>
+                </span>
+                <strong>Chọn hoặc kéo ảnh bill vào đây</strong>
+                <span>Ảnh chụp màn hình GrabFood, beFood, ShopeeFood · PNG, JPG hoặc WEBP</span>
+              </label>
+
+              <div class="upload-preview" id="upload-preview" hidden>
+                <img id="bill-image-preview" alt="Ảnh bill đã chọn" />
+                <div class="upload-file-info">
+                  <strong id="bill-file-name"></strong>
+                  <span id="bill-file-size"></span>
+                  <div class="upload-actions">
+                    <button class="scan-button" id="scan-bill" type="button">Đọc thông tin từ ảnh</button>
+                    <button class="remove-image-button" id="remove-bill-image" type="button">Chọn ảnh khác</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ocr-progress" id="ocr-progress" hidden>
+                <div class="progress-track"><span id="ocr-progress-bar"></span></div>
+                <p id="ocr-progress-text">Đang chuẩn bị nhận diện…</p>
+              </div>
+
+              <div class="ocr-result" id="ocr-result" hidden>
+                <div class="ocr-result-heading">
+                  <div>
+                    <span class="success-dot" aria-hidden="true"></span>
+                    <strong>Dữ liệu đọc được</strong>
+                  </div>
+                  <span id="ocr-result-count"></span>
+                </div>
+                <div class="ocr-detected-list" id="ocr-detected-list"></div>
+                <details class="ocr-raw-details">
+                  <summary>Xem hoặc sửa nội dung OCR</summary>
+                  <textarea id="ocr-raw-text" rows="8" aria-label="Nội dung OCR"></textarea>
+                  <button class="text-button" id="reparse-ocr" type="button">Phân tích lại nội dung</button>
+                </details>
+                <p class="ocr-note">Chỉ các thông tin chính được giữ lại. Hãy kiểm tra tên, món, phí và tổng tiền trước khi áp dụng.</p>
+                <button class="apply-ocr-button" id="apply-ocr" type="button">Dùng dữ liệu này để chia bill</button>
+              </div>
+
+              <p class="ocr-error" id="ocr-error" role="alert"></p>
+            </article>
+
+            <article class="panel">
+              <div class="section-heading">
+                <div>
+                  <span class="step">02</span>
+                  <h2>Thông tin đơn</h2>
+                </div>
+              </div>
+              <div class="bill-meta-grid order-meta-grid">
+                <label class="field">
+                  <span>Tên bill</span>
+                  <input id="bill-name" type="text" placeholder="Ví dụ: Trưa thứ Sáu" />
+                </label>
+                <label class="field">
+                  <span>Nền tảng</span>
+                  <select id="platform">
+                    <option value="GrabFood">GrabFood</option>
+                    <option value="beFood">beFood</option>
+                    <option value="ShopeeFood">ShopeeFood</option>
+                    <option value="Khác">Khác</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Ngày giờ đặt đơn</span>
+                  <input id="order-date" type="text" placeholder="Ví dụ: 14:03 · 10/07/2026" />
+                </label>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="section-heading">
+                <div>
+                  <span class="step">03</span>
+                  <h2>Những người tham gia</h2>
+                </div>
+                <button class="text-button" id="add-person" type="button">+ Thêm người</button>
+              </div>
+              <div class="people-list" id="people-list"></div>
+            </article>
+
+            <article class="panel items-panel">
+              <div class="section-heading">
+                <div>
+                  <span class="step">04</span>
+                  <h2>Các món đã gọi</h2>
+                </div>
+                <button class="text-button" id="add-item" type="button">+ Thêm món</button>
+              </div>
+              <div class="items-header" aria-hidden="true">
+                <span>Món ăn</span>
+                <span>SL</span>
+                <span>Đơn giá</span>
+                <span>Thuộc về</span>
+                <span></span>
+              </div>
+              <div class="items-list" id="items-list"></div>
+              <p class="hint">Chọn “Cả nhóm” nếu món đó được dùng chung.</p>
+            </article>
+
+            <article class="panel">
+              <div class="section-heading">
+                <div>
+                  <span class="step">05</span>
+                  <h2>Phí & ưu đãi</h2>
+                </div>
+                <span class="split-badge">Chia đều</span>
+              </div>
+              <div class="bill-meta-grid fees-grid">
+                <label class="field money-field">
+                  <span>Phí giao hàng</span>
+                  <input id="shipping-fee" inputmode="numeric" value="0" />
+                  <b>₫</b>
+                </label>
+                <label class="field money-field">
+                  <span>Phụ thu / phí khác</span>
+                  <input id="surcharge" inputmode="numeric" value="0" />
+                  <b>₫</b>
+                </label>
+                <label class="field money-field">
+                  <span>Tổng giảm giá</span>
+                  <input id="discount" inputmode="numeric" value="0" />
+                  <b>₫</b>
+                </label>
+              </div>
+              <p class="hint">Các khoản phí và tổng giảm giá được chia đều cho tất cả người tham gia.</p>
+            </article>
+          </div>
+
+          <aside class="summary-card">
+            <div class="summary-topline">
+              <p>Kết quả chia bill</p>
+              <span id="summary-platform">GRABFOOD</span>
+            </div>
+            <h2 id="summary-name">Bill mới</h2>
+            <p class="summary-date" id="summary-date" hidden></p>
+            <div class="summary-rule"></div>
+            <div class="person-results" id="person-results"></div>
+            <div class="empty-results" id="empty-results">
+              Thêm người và món ăn để xem kết quả.
+            </div>
+            <div class="summary-rule"></div>
+            <dl class="totals">
+              <div><dt>Tiền món</dt><dd id="subtotal">0 ₫</dd></div>
+              <div><dt>Phí giao hàng</dt><dd id="summary-shipping">0 ₫</dd></div>
+              <div><dt>Phụ thu / phí khác</dt><dd id="summary-surcharge">0 ₫</dd></div>
+              <div class="discount-row"><dt>Tổng giảm giá</dt><dd id="summary-discount">− 0 ₫</dd></div>
+              <div class="grand-total"><dt>Tổng phải trả</dt><dd id="grand-total">0 ₫</dd></div>
+            </dl>
+            <p class="validation-message" id="validation-message" role="alert"></p>
+            <button class="copy-button" id="copy-result" type="button">Sao chép kết quả</button>
+            <button class="reset-button" id="reset-bill" type="button">Tạo bill mới</button>
+          </aside>
+        </section>
+      </main>
+
+      <footer>
+        <p>Chia Bill · Tính rõ để vui lâu</p>
+        <p>Dữ liệu chỉ được lưu trên trình duyệt của bạn.</p>
+      </footer>
+    </div>
+
+    <template id="person-template">
+      <div class="person-chip">
+        <span class="avatar"></span>
+        <input aria-label="Tên người tham gia" maxlength="30" />
+        <button type="button" class="icon-button remove-person" aria-label="Xóa người">×</button>
+      </div>
+    </template>
+
+    <template id="item-template">
+      <div class="item-row">
+        <input class="item-name" aria-label="Tên món" placeholder="Tên món ăn" />
+        <input class="item-quantity" aria-label="Số lượng" type="number" min="1" step="1" value="1" />
+        <div class="inline-money">
+          <input class="item-price" aria-label="Đơn giá" inputmode="numeric" value="0" />
+          <span>₫</span>
+        </div>
+        <select class="item-owner" aria-label="Món thuộc về ai"></select>
+        <button type="button" class="icon-button remove-item" aria-label="Xóa món">×</button>
+      </div>
+    </template>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

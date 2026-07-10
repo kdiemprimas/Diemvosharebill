@@ -1,0 +1,15 @@
+{
+  "name": "chia-bill-do-an",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@tesseract.js-data/vie": "^1.0.0",
+    "tesseract.js": "^7.0.0"
+  }
+}

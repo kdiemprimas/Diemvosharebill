@@ -1,0 +1,15 @@
+node_modules/
+.playwright-cli/
+.agents/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and OS/editor artifacts
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
