@@ -96,3 +96,19 @@ test("chịu được lỗi OCR phổ biến ở ngày và nhãn trưởng nhóm
   assert.equal(parsed.orderDate, "14:03 · 10/07/2026");
   assert.deepEqual(parsed.people, ["Bạn"]);
 });
+
+test("nhận Bạn là trưởng nhóm khi OCR làm mất dấu hai chấm hoặc đọc sai số lượng", () => {
+  for (const ownerLine of [
+    "Bạn (Trưởng nhóm) 1 món",
+    "Bạn (Trưởng nhóm): | món",
+    "Bạn (Trưởng nhóm)",
+  ]) {
+    const parsed = parseBillText(`
+      ${ownerLine}
+      1x Matcha Cloudy L 53.000
+    `);
+
+    assert.deepEqual(parsed.people, ["Bạn"], ownerLine);
+    assert.equal(parsed.items[0].ownerName, "Bạn", ownerLine);
+  }
+});

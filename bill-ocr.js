@@ -100,10 +100,19 @@ function explicitOwner(value) {
 
 function groupOwner(value) {
   const line = normalizeLine(value);
-  const match = line.match(/^(.+?)(?:\s*\([^)]*\))?\s*:\s*\d+\s*m[oó]n\b/i);
+  const foldedLine = fold(line);
+  const leaderMatch = foldedLine.match(
+    /^(.+?)\s*\(\s*(?:truong nhom|leader)\s*\)?(?:\s*[:–—-]?\s*(?:\d+|[|il])?\s*mon\b)?\s*$/i,
+  );
+  if (leaderMatch) {
+    const owner = normalizeLine(line.slice(0, leaderMatch[1].length)).replace(/[()]+$/g, "").trim();
+    return /^(?:ban|truong nhom|leader)$/i.test(fold(owner)) ? "Bạn" : owner;
+  }
+
+  const match = line.match(/^(.+?)(?:\s*\([^)]*\))?\s*:?\s*(?:\d+|[|Il])\s*m[oó]n\b/i);
   if (!match) return "";
   const owner = normalizeLine(match[1]).replace(/[()]+$/g, "").trim();
-  return /^(?:truong nhom|leader)$/i.test(fold(owner)) ? "Bạn" : owner;
+  return /^(?:ban|truong nhom|leader)$/i.test(fold(owner)) ? "Bạn" : owner;
 }
 
 function looksLikeName(value) {
