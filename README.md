@@ -2,6 +2,11 @@
 
 Webapp nhỏ để chia tiền bill GrabFood, beFood, ShopeeFood hoặc nền tảng khác.
 
+## Mở webapp
+
+- Bản online: <https://kdiemprimas.github.io/Diemvosharebill/>
+- Bản local: chạy `npm start`, sau đó mở <http://127.0.0.1:4173>.
+
 ## Đọc bill từ ảnh
 
 - Tải ảnh PNG, JPG hoặc WEBP lên ứng dụng.
@@ -34,6 +39,12 @@ Chạy kiểm thử phần tính tiền:
 
 ```bash
 npm test
+```
+
+Tạo bản tĩnh dùng cho GitHub Pages:
+
+```bash
+npm run build
 ```
 
 Dữ liệu bill được tự động lưu trong `localStorage` của trình duyệt.

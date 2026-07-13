@@ -1,0 +1,51 @@
+import { cp, copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const sourceRoot = dirname(fileURLToPath(import.meta.url));
+const publicFiles = ["index.html", "styles.css", "app.js", "bill-calculator.js", "bill-ocr.js"];
+
+export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
+  const target = resolve(outputDir);
+  if (target === resolve(sourceRoot) || target.length < 4) {
+    throw new Error("Thư mục build không hợp lệ.");
+  }
+
+  await rm(target, { recursive: true, force: true });
+  await mkdir(target, { recursive: true });
+  await Promise.all(publicFiles.map((file) => copyFile(join(sourceRoot, file), join(target, file))));
+
+  await mkdir(join(target, "node_modules", "tesseract.js", "dist"), { recursive: true });
+  await Promise.all(
+    ["tesseract.esm.min.js", "worker.min.js"].map((file) =>
+      copyFile(
+        join(sourceRoot, "node_modules", "tesseract.js", "dist", file),
+        join(target, "node_modules", "tesseract.js", "dist", file),
+      ),
+    ),
+  );
+  await cp(
+    join(sourceRoot, "node_modules", "tesseract.js-core"),
+    join(target, "node_modules", "tesseract.js-core"),
+    { recursive: true },
+  );
+
+  await mkdir(join(target, "ocr-data"), { recursive: true });
+  await Promise.all([
+    copyFile(
+      join(sourceRoot, "node_modules", "@tesseract.js-data", "vie", "4.0.0_best_int", "vie.traineddata.gz"),
+      join(target, "ocr-data", "vie.traineddata.gz"),
+    ),
+    copyFile(
+      join(sourceRoot, "node_modules", "@tesseract.js-data", "eng", "4.0.0_best_int", "eng.traineddata.gz"),
+      join(target, "ocr-data", "eng.traineddata.gz"),
+    ),
+  ]);
+  await writeFile(join(target, ".nojekyll"), "", "utf8");
+  return target;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const output = await buildStaticSite();
+  console.log(`Đã tạo bản deploy tại ${output}`);
+}

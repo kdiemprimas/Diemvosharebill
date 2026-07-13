@@ -1,6 +1,8 @@
 node_modules/
 .playwright-cli/
 .agents/
+.codex-pet-runs/
+dist/
 
 # Local configuration and secrets
 .env
