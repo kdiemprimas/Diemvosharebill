@@ -3,6 +3,7 @@ const SUMMARY_KEYWORDS = [
   "tổng cộng",
   "tổng thanh toán",
   "tổng tiền phải trả",
+  "tiền món",
   "thành tiền",
   "subtotal",
   "total",
@@ -69,7 +70,7 @@ function removeAmount(value) {
   return normalizeLine(
     String(value)
       .replace(/-?\s*\d+(?:[.,]\d+)?\s*k\b/gi, "")
-      .replace(/-?\s*\d[\d\s.,]{2,}\s*(?:₫|đ|vnd|d)?\s*$/gi, "")
+      .replace(/-?\s*\d[\d\s.,]{2,}\s*(?:₫|đ|vnd|d)?\s*[\^~ˆ]*\s*$/gi, "")
       .replace(/[–—-]\s*$/, ""),
   );
 }
@@ -94,6 +95,7 @@ function isSummaryLine(value) {
 
 function cleanOwnerName(value) {
   return normalizeLine(value)
+    .replace(/[\^~ˆ]+\s*$/g, "")
     .replace(/\s*=\s*$/g, "")
     .replace(/\s+[x×]\s*$/i, "")
     .replace(/:$/, "")
@@ -299,17 +301,19 @@ export function parseBillText(rawText) {
     const currentLabel = fold(removeAmount(line));
     const previousLabel = fold(lines[index - 1] || "");
     const metadataLabel = currentLabel || previousLabel;
-    const namedOwner = groupOwner(line) || explicitOwner(line);
-    if (namedOwner && !amount) {
+    const ownerCandidate = cleanOwnerName(amount ? lineWithoutAmount : line);
+    const namedOwner = groupOwner(ownerCandidate) || explicitOwner(ownerCandidate);
+    const ownerHasCalculatedShare = isCalculatedShareMarker(nextLine)
+      || (parseAmount(nextLine) && isCalculatedShareMarker(lineAfterNext));
+    if (namedOwner && (!amount || ownerHasCalculatedShare)) {
       currentOwner = namedOwner;
       detectedPeople.add(namedOwner);
       return;
     }
 
-    const standaloneOwner = cleanOwnerName(amount ? lineWithoutAmount : line);
+    const standaloneOwner = ownerCandidate;
     const ownerBeforeCalculatedShare = looksLikeName(standaloneOwner)
-      && (isCalculatedShareMarker(nextLine)
-        || (parseAmount(nextLine) && isCalculatedShareMarker(lineAfterNext)));
+      && ownerHasCalculatedShare;
     if (ownerBeforeCalculatedShare) {
       currentOwner = standaloneOwner;
       detectedPeople.add(standaloneOwner);
@@ -326,7 +330,11 @@ export function parseBillText(rawText) {
       detectedTotal = amount;
       return;
     }
-    if (amount && /(tong tam tinh|tam tinh|subtotal)/i.test(metadataLabel)) {
+    if (amount && /(apple pay|google pay|momo|zalo\s*pay|shopee\s*pay|tien mat|cash payment)/i.test(metadataLabel)) {
+      detectedTotal = amount;
+      return;
+    }
+    if (amount && /(tong tam tinh|tam tinh|(?:tong )?tien mon|subtotal)/i.test(metadataLabel)) {
       detectedSubtotal = amount;
       return;
     }
