@@ -73,6 +73,23 @@ test("ưu tiên tổng giảm giá đã công bố để không cộng trùng vo
   assert.deepEqual(parsed.people, ["Mai"]);
 });
 
+test("đối chiếu tổng giảm giá từ số tiền cuối khi OCR bỏ sót voucher", () => {
+  const parsed = parseBillText(`
+    GrabFood
+    Đơn của Mai
+    Bánh mì 121.000đ
+    Phí áp dụng 26.000đ
+    GrabVIP Benefit -10.000đ
+    Giảm đơn nhóm -4.840đ
+    Tổng tiền phải trả 79.160đ
+  `);
+
+  assert.equal(parsed.subtotal, 121000);
+  assert.equal(parsed.surcharge, 26000);
+  assert.equal(parsed.totalPayable, 79160);
+  assert.equal(parsed.discount, 67840);
+});
+
 test("tự tính tổng phải trả khi bill không có dòng tổng cuối", () => {
   const parsed = parseBillText(`
     beFood

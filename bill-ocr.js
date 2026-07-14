@@ -377,7 +377,12 @@ export function parseBillText(rawText) {
 
   result.people = [...new Set([...detectedPeople, ...result.items.map((item) => item.ownerName)])];
   result.subtotal = detectedSubtotal || result.items.reduce((sum, item) => sum + item.lineTotal, 0);
-  result.discount = explicitDiscountTotal || discountLinesTotal;
+  const listedDiscount = explicitDiscountTotal || discountLinesTotal;
+  const grossTotal = result.subtotal + result.shippingFee + result.surcharge;
+  const reconciledDiscount = detectedTotal && grossTotal >= detectedTotal
+    ? grossTotal - detectedTotal
+    : 0;
+  result.discount = reconciledDiscount || listedDiscount;
   result.totalPayable = detectedTotal || Math.max(
     0,
     result.subtotal + result.shippingFee + result.surcharge - result.discount,
