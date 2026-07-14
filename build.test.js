@@ -27,8 +27,13 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
 
   await Promise.all(expectedFiles.map((path) => access(join(outputDir, path))));
   const html = await readFile(join(outputDir, "index.html"), "utf8");
+  const app = await readFile(join(outputDir, "app.js"), "utf8");
   assert.match(html, /<title>Chia Bill<\/title>/);
   assert.match(html, /name="split-mode"/);
   assert.match(html, /Chia đều tổng thanh toán/);
   assert.match(html, /Theo món đã gọi/);
+  assert.match(html, /styles\.css\?v=[a-f0-9]{12}/);
+  assert.match(html, /app\.js\?v=[a-f0-9]{12}/);
+  assert.match(app, /bill-calculator\.js\?v=[a-f0-9]{12}/);
+  assert.match(app, /bill-ocr\.js\?v=[a-f0-9]{12}/);
 });

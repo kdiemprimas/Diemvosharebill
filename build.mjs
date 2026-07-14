@@ -1,4 +1,5 @@
-import { cp, copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { cp, copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,6 +15,24 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
   await rm(target, { recursive: true, force: true });
   await mkdir(target, { recursive: true });
   await Promise.all(publicFiles.map((file) => copyFile(join(sourceRoot, file), join(target, file))));
+
+  const sourceContents = await Promise.all(
+    publicFiles.map((file) => readFile(join(sourceRoot, file), "utf8")),
+  );
+  const assetVersion = createHash("sha256")
+    .update(sourceContents.join("\0"))
+    .digest("hex")
+    .slice(0, 12);
+  const versionedHtml = sourceContents[publicFiles.indexOf("index.html")]
+    .replace("./styles.css", `./styles.css?v=${assetVersion}`)
+    .replace("./app.js", `./app.js?v=${assetVersion}`);
+  const versionedApp = sourceContents[publicFiles.indexOf("app.js")]
+    .replace("./bill-calculator.js", `./bill-calculator.js?v=${assetVersion}`)
+    .replace("./bill-ocr.js", `./bill-ocr.js?v=${assetVersion}`);
+  await Promise.all([
+    writeFile(join(target, "index.html"), versionedHtml, "utf8"),
+    writeFile(join(target, "app.js"), versionedApp, "utf8"),
+  ]);
 
   await mkdir(join(target, "node_modules", "tesseract.js", "dist"), { recursive: true });
   await Promise.all(
