@@ -112,3 +112,36 @@ test("nhận Bạn là trưởng nhóm khi OCR làm mất dấu hai chấm hoặ
     assert.equal(parsed.items[0].ownerName, "Bạn", ownerLine);
   }
 });
+
+test("bỏ qua giá gốc bị gạch khi giá sau giảm nằm cùng dòng món", () => {
+  const parsed = parseBillText(`
+    Mai Ngân: 1 món
+    1x Cơm chiên ba rọi sốt BƠ TỎI 47.700
+    62.009
+    nhiều nước mắm
+  `);
+
+  assert.deepEqual(parsed.items, [
+    {
+      ownerName: "Mai Ngân",
+      name: "Cơm chiên ba rọi sốt BƠ TỎI",
+      quantity: 1,
+      lineTotal: 47700,
+      price: 47700,
+    },
+  ]);
+  assert.equal(parsed.subtotal, 47700);
+});
+
+test("chọn giá sau giảm ở trên khi OCR tách hai mức giá thành hai dòng", () => {
+  const parsed = parseBillText(`
+    Mai Ngân: 1 món
+    1x Cơm chiên ba rọi sốt BƠ TỎI
+    47.700
+    53.000
+  `);
+
+  assert.equal(parsed.items.length, 1);
+  assert.equal(parsed.items[0].lineTotal, 47700);
+  assert.equal(parsed.subtotal, 47700);
+});

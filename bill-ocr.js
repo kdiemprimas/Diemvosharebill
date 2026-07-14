@@ -195,6 +195,7 @@ export function parseBillText(rawText) {
   let detectedTotal = 0;
   let discountLinesTotal = 0;
   let explicitDiscountTotal = 0;
+  let lastItemPriceLineIndex = -2;
 
   lines.forEach((line, index) => {
     if (parseOrderDate([line])) return;
@@ -238,6 +239,7 @@ export function parseBillText(rawText) {
     let itemLineIndex = index;
     let itemText = removeAmount(line);
     if (!itemText || /^[-+]?\s*(?:₫|đ|vnd)?$/i.test(itemText)) {
+      if (lastItemPriceLineIndex === index - 1) return;
       itemLineIndex = index - 1;
       itemText = lines[itemLineIndex] || "";
     }
@@ -257,6 +259,7 @@ export function parseBillText(rawText) {
       lineTotal: amount,
       price: Math.round(amount / quantity),
     });
+    lastItemPriceLineIndex = index;
   });
 
   result.people = [...new Set(result.items.map((item) => item.ownerName))];
