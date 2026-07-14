@@ -404,10 +404,7 @@ export function parseBillText(rawText) {
   result.subtotal = detectedSubtotal || result.items.reduce((sum, item) => sum + item.lineTotal, 0);
   const listedDiscount = explicitDiscountTotal || discountLinesTotal;
   const grossTotal = result.subtotal + result.shippingFee + result.surcharge;
-  const reconciledDiscount = detectedTotal && grossTotal >= detectedTotal
-    ? grossTotal - detectedTotal
-    : 0;
-  result.discount = listedDiscount || reconciledDiscount;
+  result.discount = listedDiscount;
   const calculatedTotal = Math.max(0, grossTotal - result.discount);
   result.totalPayable = (explicitDiscountTotal || discountLineCount)
     ? calculatedTotal
