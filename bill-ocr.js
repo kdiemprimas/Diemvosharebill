@@ -110,7 +110,11 @@ function isCalculatedShareMarker(value) {
 
 function isNonItemContent(value) {
   const label = fold(value);
-  return /xem\s*lo\s*trinh|apple\s*pay|\b\d+(?:[.,]\d+)?\s*km\b|\b\d{1,2}:\d{2}\b/i.test(label);
+  return /xem\s*lo\s*trinh|apple\s*pay|^option\s*\d+|^chon\s*size|^chi\s*tiet\s*thanh\s*toan|\b\d+(?:[.,]\d+)?\s*km\b|\b\d{1,2}:\d{2}\b/i.test(label);
+}
+
+function isStandaloneAmountLine(value) {
+  return Boolean(parseAmount(value)) && !removeAmount(value).replace(/[\^~ˆ]/g, "").trim();
 }
 
 function explicitOwner(value) {
@@ -188,6 +192,71 @@ function parseOrderDate(lines) {
   return "";
 }
 
+function flattenOcrLines(blocks) {
+  return (Array.isArray(blocks) ? blocks : [])
+    .flatMap((block) => {
+      const paragraphLines = block?.paragraphs?.flatMap((paragraph) => paragraph.lines || []) || [];
+      return paragraphLines.length ? paragraphLines : [block];
+    })
+    .map((line) => ({
+      text: normalizeLine(line?.text || ""),
+      bbox: line?.bbox || {},
+    }))
+    .filter(({ text, bbox }) => text && Number.isFinite(bbox.x0) && Number.isFinite(bbox.y0));
+}
+
+export function findTemporaryTotalRows(blocks, imageWidth) {
+  const lines = flattenOcrLines(blocks);
+  return lines
+    .filter((line) => {
+      if (!parseAmount(line.text) || line.bbox.x0 < imageWidth * 0.55) return false;
+      if (/[\^~ˆ]/.test(line.text)) return true;
+      const height = Math.max(1, (line.bbox.y1 || line.bbox.y0) - line.bbox.y0);
+      return lines.some((candidate) => (
+        candidate.bbox.x0 < imageWidth * 0.55
+        && candidate.bbox.y0 >= line.bbox.y0
+        && candidate.bbox.y0 <= (line.bbox.y1 || line.bbox.y0) + height * 2
+        && isCalculatedShareMarker(candidate.text)
+      ));
+    })
+    .sort((left, right) => left.bbox.y0 - right.bbox.y0);
+}
+
+function cleanOcrHeader(value) {
+  return cleanOwnerName(value)
+    .replace(/^[^A-Za-zÀ-ỹĐđ]+/u, "")
+    .replace(/[^A-Za-zÀ-ỹĐđ.'\-\s]+$/u, "")
+    .trim();
+}
+
+export function buildStructuredOcrText(blocks, recognizedHeaders = [], imageWidth = 0) {
+  const lines = flattenOcrLines(blocks);
+  const temporaryRows = findTemporaryTotalRows(blocks, imageWidth);
+
+  temporaryRows.forEach((row, index) => {
+    const height = Math.max(1, (row.bbox.y1 || row.bbox.y0) - row.bbox.y0);
+    const hasHeader = lines.some((candidate) => (
+      candidate.bbox.x0 < imageWidth * 0.55
+      && candidate.bbox.y0 < row.bbox.y0 + height * 0.35
+      && (candidate.bbox.y1 || candidate.bbox.y0) >= row.bbox.y0 - height * 3
+      && looksLikeName(cleanOcrHeader(candidate.text))
+      && !isCalculatedShareMarker(candidate.text)
+    ));
+    const header = cleanOcrHeader(recognizedHeaders[index] || "");
+    if (!hasHeader && header && looksLikeName(header)) {
+      lines.push({
+        text: header,
+        bbox: { x0: 0, y0: row.bbox.y0 - height * 2.5, x1: imageWidth * 0.5, y1: row.bbox.y0 - height },
+      });
+    }
+  });
+
+  return lines
+    .sort((left, right) => left.bbox.y0 - right.bbox.y0 || left.bbox.x0 - right.bbox.x0)
+    .map((line) => line.text)
+    .join("\n");
+}
+
 export function parseBillText(rawText) {
   const lines = String(rawText)
     .split(/\r?\n/)
@@ -226,6 +295,7 @@ export function parseBillText(rawText) {
     const amount = parseAmount(line);
     const lineWithoutAmount = removeAmount(line);
     const nextLine = lines[index + 1] || "";
+    const lineAfterNext = lines[index + 2] || "";
     const currentLabel = fold(removeAmount(line));
     const previousLabel = fold(lines[index - 1] || "");
     const metadataLabel = currentLabel || previousLabel;
@@ -238,12 +308,14 @@ export function parseBillText(rawText) {
 
     const standaloneOwner = cleanOwnerName(amount ? lineWithoutAmount : line);
     const ownerBeforeCalculatedShare = looksLikeName(standaloneOwner)
-      && isCalculatedShareMarker(nextLine);
+      && (isCalculatedShareMarker(nextLine)
+        || (parseAmount(nextLine) && isCalculatedShareMarker(lineAfterNext)));
     if (ownerBeforeCalculatedShare) {
       currentOwner = standaloneOwner;
       detectedPeople.add(standaloneOwner);
       return;
     }
+    if (amount && currentOwner && isCalculatedShareMarker(nextLine)) return;
     if (amount && isCalculatedShareMarker(line)) return;
 
     if (amount && /(tong (?:ma )?giam gia|tong khuyen mai|tong uu dai|total discount)/i.test(metadataLabel)) {
@@ -272,6 +344,8 @@ export function parseBillText(rawText) {
     }
     if (!amount || isSummaryLine(line)) return;
 
+    if (/\d+\s*k\b/i.test(line) && lineWithoutAmount && isStandaloneAmountLine(nextLine)) return;
+
     let itemLineIndex = index;
     let itemText = removeAmount(line);
     if (!itemText || /^[-+]?\s*(?:₫|đ|vnd)?$/i.test(itemText)) {
@@ -280,10 +354,13 @@ export function parseBillText(rawText) {
       itemText = lines[itemLineIndex] || "";
     }
 
-    itemText = removeAmount(itemText);
+    const itemNameContainsProductPrice = itemLineIndex !== index
+      && /\d+\s*k\b/i.test(itemText)
+      && isStandaloneAmountLine(line);
+    if (!itemNameContainsProductPrice) itemText = removeAmount(itemText);
     const quantity = extractQuantity(itemText);
     itemText = removeQuantity(itemText);
-    const split = splitOwnerAndItem(itemText);
+    const split = currentOwner ? { ownerName: "", itemName: itemText } : splitOwnerAndItem(itemText);
     const ownerName = split.ownerName || findOwner(lines, itemLineIndex, currentOwner);
     const itemName = normalizeLine(split.itemName);
     if (!itemName || isSummaryLine(itemName) || isNonItemContent(itemName)) return;

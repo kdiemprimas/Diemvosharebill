@@ -1,5 +1,9 @@
 import { calculateBill } from "./bill-calculator.js";
-import { parseBillText } from "./bill-ocr.js";
+import {
+  buildStructuredOcrText,
+  findTemporaryTotalRows,
+  parseBillText,
+} from "./bill-ocr.js";
 
 const STORAGE_KEY = "chia-bill-state-v1";
 const TESSERACT_MODULE_PATH = "./node_modules/tesseract.js/dist/tesseract.esm.min.js";
@@ -164,6 +168,41 @@ function updateOcrProgress(message) {
   elements.ocrProgressText.textContent = ocrStatusText[message.status] || "Đang xử lý ảnh bill…";
 }
 
+async function prepareOcrImage(file) {
+  if (typeof createImageBitmap !== "function") return { image: file, width: 0, height: 0 };
+
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.max(1, Math.min(3, 1600 / bitmap.width, 3000 / bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext("2d");
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return { image: canvas, width: canvas.width, height: canvas.height };
+}
+
+async function recognizeMissingHeaders(worker, image, temporaryRows, imageWidth, imageHeight, PSM) {
+  if (!temporaryRows.length || !imageWidth || !imageHeight) return [];
+  await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE });
+  const names = [];
+
+  for (const row of temporaryRows.slice(0, 20)) {
+    const rowHeight = Math.max(12, row.bbox.y1 - row.bbox.y0);
+    const rectangle = {
+      left: Math.round(imageWidth * 0.1),
+      top: Math.max(0, Math.round(row.bbox.y0 - rowHeight * 2.7)),
+      width: Math.round(imageWidth * 0.55),
+      height: Math.min(imageHeight, Math.round(rowHeight * 3)),
+    };
+    const headerRecognition = await worker.recognize(image, { rectangle });
+    names.push(headerRecognition.data.text.trim());
+  }
+  return names;
+}
+
 function renderOcrResult() {
   if (!parsedOcrBill) return;
   elements.ocrDetectedList.innerHTML = "";
@@ -229,7 +268,7 @@ async function scanBillImage() {
       throw new Error("OCR_REQUIRES_LOCALHOST");
     }
     const tesseractModule = await import(TESSERACT_MODULE_PATH);
-    const { createWorker } = tesseractModule.default || tesseractModule;
+    const { createWorker, PSM } = tesseractModule.default || tesseractModule;
     worker = await createWorker("vie+eng", 1, {
       workerPath: "./node_modules/tesseract.js/dist/worker.min.js",
       corePath: "./node_modules/tesseract.js-core",
@@ -237,8 +276,31 @@ async function scanBillImage() {
       workerBlobURL: false,
       logger: updateOcrProgress,
     });
-    const recognition = await worker.recognize(selectedBillFile, { rotateAuto: true });
-    const rawText = recognition.data.text.trim();
+    const prepared = await prepareOcrImage(selectedBillFile);
+    await worker.setParameters({
+      tessedit_pageseg_mode: PSM.SPARSE_TEXT,
+      preserve_interword_spaces: "1",
+    });
+    const recognition = await worker.recognize(
+      prepared.image,
+      { rotateAuto: true },
+      { text: true, blocks: true },
+    );
+    const blocks = recognition.data.blocks || [];
+    const layoutWidth = prepared.width || Math.max(0, ...blocks.map((block) => block.bbox?.x1 || 0));
+    const layoutHeight = prepared.height || Math.max(0, ...blocks.map((block) => block.bbox?.y1 || 0));
+    const temporaryRows = findTemporaryTotalRows(blocks, layoutWidth);
+    const headerNames = await recognizeMissingHeaders(
+      worker,
+      prepared.image,
+      temporaryRows,
+      layoutWidth,
+      layoutHeight,
+      PSM,
+    );
+    const rawText = (blocks.length
+      ? buildStructuredOcrText(blocks, headerNames, layoutWidth)
+      : recognition.data.text).trim();
     elements.ocrRawText.value = rawText;
     parseAndShowOcr(rawText);
   } catch (error) {
