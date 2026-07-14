@@ -145,3 +145,45 @@ test("chọn giá sau giảm ở trên khi OCR tách hai mức giá thành hai d
   assert.equal(parsed.items[0].lineTotal, 47700);
   assert.equal(parsed.subtotal, 47700);
 });
+
+test("bỏ số tiền app nguồn đã chia sẵn và giữ món thực tế bên dưới cho đúng người", () => {
+  const parsed = parseBillText(`
+    "sian ® Xem lộ trình ail 56 67? 5.667
+    0.3km 08:64 - 09: 4
+    VõDiễm =
+    @ 1 phần 408.504
+    x1 Americano Nước Dừa 65.000
+    Lê Tiến x
+    @ 1 phần 30.226
+    Coffee
+    x1 Cà Phê Phin Đen Đá 35.000
+    Nguyễn Minh Nhật N
+    (Đơn) 459.244
+    x1 Combo Sáng Highlands 59.000
+    Option 1: Bạn chọn ly nhé! 8.000
+    combo: Bánh Mì Que Pate 17.000
+  `);
+
+  assert.deepEqual(parsed.people, ["VõDiễm", "Lê Tiến", "Nguyễn Minh Nhật N"]);
+  assert.deepEqual(parsed.items, [
+    { ownerName: "VõDiễm", name: "Americano Nước Dừa", quantity: 1, lineTotal: 65000, price: 65000 },
+    { ownerName: "Lê Tiến", name: "Cà Phê Phin Đen Đá", quantity: 1, lineTotal: 35000, price: 35000 },
+    { ownerName: "Nguyễn Minh Nhật N", name: "Combo Sáng Highlands", quantity: 1, lineTotal: 59000, price: 59000 },
+    { ownerName: "Nguyễn Minh Nhật N", name: "Option 1: Bạn chọn ly nhé!", quantity: 1, lineTotal: 8000, price: 8000 },
+    { ownerName: "Nguyễn Minh Nhật N", name: "combo: Bánh Mì Que Pate", quantity: 1, lineTotal: 17000, price: 17000 },
+  ]);
+  assert.equal(parsed.subtotal, 184000);
+});
+
+test("bỏ tổng chia sẵn khi OCR đặt số tiền ngay trên dòng tên người", () => {
+  const parsed = parseBillText(`
+    Hà 40.850
+    1 phần
+    x1 Americano Nước Dừa 65.000
+  `);
+
+  assert.deepEqual(parsed.people, ["Hà"]);
+  assert.equal(parsed.items.length, 1);
+  assert.equal(parsed.items[0].lineTotal, 65000);
+  assert.equal(parsed.totalPayable, 65000);
+});

@@ -32,13 +32,14 @@ const NON_NAME_KEYWORDS = [
   "đơn giá",
   "món ăn",
   "cảm ơn",
+  "combo",
 ];
 
 function fold(value) {
   return String(value)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
+    .replace(/đ/gi, "d")
     .toLowerCase();
 }
 
@@ -74,12 +75,12 @@ function removeAmount(value) {
 }
 
 function extractQuantity(value) {
-  const match = String(value).match(/^\s*(\d+)\s*[x×]\s*/i);
-  return match ? Math.max(1, Number(match[1])) : 1;
+  const match = String(value).match(/^\s*(?:(\d+)\s*[x×]|[x×]\s*(\d+))\s*/i);
+  return match ? Math.max(1, Number(match[1] || match[2])) : 1;
 }
 
 function removeQuantity(value) {
-  return normalizeLine(String(value).replace(/^\s*\d+\s*[x×]\s*/i, ""));
+  return normalizeLine(String(value).replace(/^\s*(?:\d+\s*[x×]|[x×]\s*\d+)\s*/i, ""));
 }
 
 function includesAny(value, keywords) {
@@ -89,6 +90,27 @@ function includesAny(value, keywords) {
 
 function isSummaryLine(value) {
   return includesAny(value, SUMMARY_KEYWORDS);
+}
+
+function cleanOwnerName(value) {
+  return normalizeLine(value)
+    .replace(/\s*=\s*$/g, "")
+    .replace(/\s+[x×]\s*$/i, "")
+    .replace(/:$/, "")
+    .trim();
+}
+
+function isCalculatedShareMarker(value) {
+  const label = fold(removeAmount(value))
+    .replace(/[()@:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return /^(?:\d+\s*)?phan$/i.test(label) || /^(?:don|don hang)$/i.test(label);
+}
+
+function isNonItemContent(value) {
+  const label = fold(value);
+  return /xem\s*lo\s*trinh|apple\s*pay|\b\d+(?:[.,]\d+)?\s*km\b|\b\d{1,2}:\d{2}\b/i.test(label);
 }
 
 function explicitOwner(value) {
@@ -105,13 +127,13 @@ function groupOwner(value) {
     /^(.+?)\s*\(\s*(?:truong nhom|leader)\s*\)?(?:\s*[:–—-]?\s*(?:\d+|[|il])?\s*mon\b)?\s*$/i,
   );
   if (leaderMatch) {
-    const owner = normalizeLine(line.slice(0, leaderMatch[1].length)).replace(/[()]+$/g, "").trim();
+    const owner = cleanOwnerName(line.slice(0, leaderMatch[1].length)).replace(/[()]+$/g, "").trim();
     return /^(?:ban|truong nhom|leader)$/i.test(fold(owner)) ? "Bạn" : owner;
   }
 
   const match = line.match(/^(.+?)(?:\s*\([^)]*\))?\s*:?\s*(?:\d+|[|Il])\s*m[oó]n\b/i);
   if (!match) return "";
-  const owner = normalizeLine(match[1]).replace(/[()]+$/g, "").trim();
+  const owner = cleanOwnerName(match[1]).replace(/[()]+$/g, "").trim();
   return /^(?:ban|truong nhom|leader)$/i.test(fold(owner)) ? "Bạn" : owner;
 }
 
@@ -196,19 +218,33 @@ export function parseBillText(rawText) {
   let discountLinesTotal = 0;
   let explicitDiscountTotal = 0;
   let lastItemPriceLineIndex = -2;
+  const detectedPeople = new Set();
 
   lines.forEach((line, index) => {
     if (parseOrderDate([line])) return;
 
     const amount = parseAmount(line);
+    const lineWithoutAmount = removeAmount(line);
+    const nextLine = lines[index + 1] || "";
     const currentLabel = fold(removeAmount(line));
     const previousLabel = fold(lines[index - 1] || "");
     const metadataLabel = currentLabel || previousLabel;
     const namedOwner = groupOwner(line) || explicitOwner(line);
     if (namedOwner && !amount) {
       currentOwner = namedOwner;
+      detectedPeople.add(namedOwner);
       return;
     }
+
+    const standaloneOwner = cleanOwnerName(amount ? lineWithoutAmount : line);
+    const ownerBeforeCalculatedShare = looksLikeName(standaloneOwner)
+      && isCalculatedShareMarker(nextLine);
+    if (ownerBeforeCalculatedShare) {
+      currentOwner = standaloneOwner;
+      detectedPeople.add(standaloneOwner);
+      return;
+    }
+    if (amount && isCalculatedShareMarker(line)) return;
 
     if (amount && /(tong (?:ma )?giam gia|tong khuyen mai|tong uu dai|total discount)/i.test(metadataLabel)) {
       explicitDiscountTotal = amount;
@@ -250,7 +286,7 @@ export function parseBillText(rawText) {
     const split = splitOwnerAndItem(itemText);
     const ownerName = split.ownerName || findOwner(lines, itemLineIndex, currentOwner);
     const itemName = normalizeLine(split.itemName);
-    if (!itemName || isSummaryLine(itemName)) return;
+    if (!itemName || isSummaryLine(itemName) || isNonItemContent(itemName)) return;
 
     result.items.push({
       ownerName,
@@ -262,7 +298,7 @@ export function parseBillText(rawText) {
     lastItemPriceLineIndex = index;
   });
 
-  result.people = [...new Set(result.items.map((item) => item.ownerName))];
+  result.people = [...new Set([...detectedPeople, ...result.items.map((item) => item.ownerName)])];
   result.subtotal = detectedSubtotal || result.items.reduce((sum, item) => sum + item.lineTotal, 0);
   result.discount = explicitDiscountTotal || discountLinesTotal;
   result.totalPayable = detectedTotal || Math.max(
