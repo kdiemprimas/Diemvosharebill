@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { allocateEvenly, calculateBill } from "./bill-calculator.js";
+import { allocateEvenly, calculateBill, calculateEqualSplit } from "./bill-calculator.js";
 
 test("chia số tiền lẻ nhưng vẫn giữ đúng tổng", () => {
   const shares = allocateEvenly(10000, ["a", "b", "c"]);
@@ -55,4 +55,28 @@ test("món dùng chung cũng được chia đều và không lệch tổng", () 
   assert.equal(bill.results.reduce((sum, result) => sum + result.payable, 0), bill.total);
   assert.deepEqual(bill.results.map(({ payable }) => payable), [35001, 34999, 35000]);
   assert.deepEqual(bill.results.map(({ lineItems }) => lineItems[0].amount), [33334, 33333, 33333]);
+});
+
+test("chia đều số tiền cuối cùng cho tất cả người trong đơn", () => {
+  const bill = calculateEqualSplit({
+    people: [
+      { id: "a", name: "An" },
+      { id: "b", name: "Bình" },
+      { id: "c", name: "Chi" },
+    ],
+    total: 117001,
+  });
+
+  assert.equal(bill.total, 117001);
+  assert.deepEqual(bill.results.map(({ payable }) => payable), [39001, 39000, 39000]);
+  assert.equal(bill.results.reduce((sum, result) => sum + result.payable, 0), 117001);
+  assert.equal(bill.results.every((result) => result.lineItems[0].name === "Chia đều tổng thanh toán"), true);
+});
+
+test("chia đều an toàn khi đơn chưa có người hoặc tổng tiền âm", () => {
+  assert.deepEqual(calculateEqualSplit({ people: [], total: 100000 }).results, []);
+  assert.equal(
+    calculateEqualSplit({ people: [{ id: "a", name: "An" }], total: -5000 }).results[0].payable,
+    0,
+  );
 });

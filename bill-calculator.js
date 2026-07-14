@@ -14,6 +14,33 @@ export function allocateEvenly(amount, participantIds) {
   );
 }
 
+export function calculateEqualSplit({ people = [], total = 0 }) {
+  const normalizedTotal = Math.max(0, Math.round(Number(total) || 0));
+  const ids = people.map((person) => person.id);
+  const shares = allocateEvenly(normalizedTotal, ids);
+
+  return {
+    total: normalizedTotal,
+    results: people.map((person) => {
+      const payable = shares[person.id] || 0;
+      return {
+        ...person,
+        itemTotal: payable,
+        lineItems: [{
+          name: "Chia đều tổng thanh toán",
+          quantity: 1,
+          amount: payable,
+          shared: true,
+        }],
+        shippingShare: 0,
+        surchargeShare: 0,
+        discountShare: 0,
+        payable,
+      };
+    }),
+  };
+}
+
 export function calculateBill({ people = [], items = [], shippingFee = 0, surcharge = 0, discount = 0 }) {
   const ids = people.map((person) => person.id);
   const itemTotals = Object.fromEntries(ids.map((id) => [id, 0]));

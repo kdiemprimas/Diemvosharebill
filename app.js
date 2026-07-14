@@ -1,4 +1,4 @@
-import { calculateBill } from "./bill-calculator.js";
+import { calculateBill, calculateEqualSplit } from "./bill-calculator.js";
 import {
   buildStructuredOcrText,
   findTemporaryTotalRows,
@@ -24,6 +24,7 @@ const defaultState = () => ({
   surcharge: 0,
   discount: 20000,
   detectedTotalPayable: 0,
+  splitMode: "byItems",
 });
 
 function loadState() {
@@ -37,6 +38,7 @@ function loadState() {
 }
 
 let state = loadState();
+if (!["equal", "byItems"].includes(state.splitMode)) state.splitMode = "byItems";
 let selectedBillFile = null;
 let selectedBillUrl = "";
 let parsedOcrBill = null;
@@ -70,6 +72,7 @@ const elements = {
   ocrDetectedList: document.querySelector("#ocr-detected-list"),
   ocrRawText: document.querySelector("#ocr-raw-text"),
   ocrError: document.querySelector("#ocr-error"),
+  splitModeInputs: document.querySelectorAll('input[name="split-mode"]'),
 };
 
 const money = new Intl.NumberFormat("vi-VN");
@@ -423,13 +426,29 @@ function removePerson(personId) {
   updateStateAndSummary();
 }
 
+function getCalculatedBill() {
+  const detailedBill = calculateBill(state);
+  if (state.splitMode !== "equal") return detailedBill;
+
+  const finalTotal = Math.max(
+    0,
+    Math.round(Number(state.detectedTotalPayable) || detailedBill.total),
+  );
+  const equalBill = calculateEqualSplit({ people: state.people, total: finalTotal });
+  return { ...detailedBill, ...equalBill };
+}
+
 function renderSummary() {
-  const bill = calculateBill(state);
+  const bill = getCalculatedBill();
+  const isEqualSplit = state.splitMode === "equal";
   document.querySelector("#summary-name").textContent = state.billName.trim() || "Bill mới";
   document.querySelector("#summary-platform").textContent = state.platform.toUpperCase();
   const summaryDate = document.querySelector("#summary-date");
   summaryDate.textContent = state.orderDate || "";
   summaryDate.hidden = !state.orderDate;
+  document.querySelector("#summary-split-mode").textContent = isEqualSplit
+    ? "Chia đều tổng thanh toán"
+    : "Theo món đã gọi";
   document.querySelector("#subtotal").textContent = formatMoney(bill.subtotal);
   document.querySelector("#summary-shipping").textContent = formatMoney(bill.shippingFee);
   document.querySelector("#summary-surcharge").textContent = formatMoney(bill.surcharge);
@@ -441,7 +460,9 @@ function renderSummary() {
   bill.results.forEach((result, index) => {
     const article = document.createElement("article");
     article.className = "result-row";
-    const itemDetails = result.lineItems.length
+    const itemDetails = isEqualSplit
+      ? `<li><span>1 phần tổng thanh toán</span><strong>${formatMoney(result.payable)}</strong></li>`
+      : result.lineItems.length
       ? result.lineItems
           .map(
             (item) => `
@@ -458,7 +479,9 @@ function renderSummary() {
         <span class="result-avatar" style="background:${colors[index % colors.length]}">${escapeHtml((result.name || "?").trim().charAt(0).toUpperCase())}</span>
         <div class="result-person">
           <strong>${escapeHtml(result.name || "Chưa đặt tên")}</strong>
-          <small>Ship ${formatMoney(result.shippingShare)} · Phụ thu ${formatMoney(result.surchargeShare)} · Giảm ${formatMoney(result.discountShare)}</small>
+          <small>${isEqualSplit
+            ? `Chia đều từ tổng ${formatMoney(bill.total)}`
+            : `Ship ${formatMoney(result.shippingShare)} · Phụ thu ${formatMoney(result.surchargeShare)} · Giảm ${formatMoney(result.discountShare)}`}</small>
         </div>
         <strong class="result-amount">${formatMoney(result.payable)}</strong>
       </div>
@@ -476,7 +499,7 @@ function renderSummary() {
     elements.validation.textContent = "Có món chưa được gán cho người tham gia.";
   } else if (bill.discount > bill.subtotal + bill.shippingFee + bill.surcharge) {
     elements.validation.textContent = "Tổng giảm giá đang lớn hơn tiền món và các khoản phí.";
-  } else if (state.detectedTotalPayable && Math.abs(state.detectedTotalPayable - bill.total) > 1) {
+  } else if (!isEqualSplit && state.detectedTotalPayable && Math.abs(state.detectedTotalPayable - bill.total) > 1) {
     elements.validation.textContent = `Tổng từ ảnh là ${formatMoney(state.detectedTotalPayable)}, đang lệch ${formatMoney(Math.abs(state.detectedTotalPayable - bill.total))}. Hãy kiểm tra lại món hoặc phí.`;
   } else {
     elements.validation.textContent = "";
@@ -494,19 +517,23 @@ function bindMoneyInput(input, key) {
 }
 
 function getShareText() {
-  const bill = calculateBill(state);
+  const bill = getCalculatedBill();
+  const isEqualSplit = state.splitMode === "equal";
   const lines = [
     `🍜 ${state.billName.trim() || "Chia bill đồ ăn"} (${state.platform})`,
     ...(state.orderDate ? [`Ngày đặt: ${state.orderDate}`] : []),
+    `Cách chia: ${isEqualSplit ? "Chia đều tổng thanh toán" : "Theo món đã gọi"}`,
     ...bill.results.flatMap((result) => [
       `• ${result.name || "Chưa đặt tên"}: ${formatMoney(result.payable)}`,
-      ...result.lineItems.map(
+      ...(isEqualSplit ? [] : result.lineItems.map(
         (item) => `  - ${item.shared ? "[Chung] " : ""}${item.quantity > 1 ? `${item.quantity}× ` : ""}${item.name}: ${formatMoney(item.amount)}`,
-      ),
+      )),
     ]),
     `Phí ship: ${formatMoney(bill.shippingFee)} · Phụ thu: ${formatMoney(bill.surcharge)} · Giảm: ${formatMoney(bill.discount)}`,
     `Tổng phải trả: ${formatMoney(bill.total)}`,
-    "Các khoản phí và giảm giá đã được chia đều.",
+    isEqualSplit
+      ? "Tổng thanh toán đã được chia đều cho tất cả người tham gia."
+      : "Các khoản phí và giảm giá đã được chia đều.",
   ];
   return lines.join("\n");
 }
@@ -538,6 +565,9 @@ function renderAll() {
   elements.shippingFee.value = money.format(state.shippingFee);
   elements.surcharge.value = money.format(state.surcharge || 0);
   elements.discount.value = money.format(state.discount);
+  elements.splitModeInputs.forEach((input) => {
+    input.checked = input.value === state.splitMode;
+  });
   renderPeople();
   renderItems();
   renderSummary();
@@ -599,5 +629,12 @@ document.querySelector("#apply-ocr").addEventListener("click", applyOcrBill);
 bindMoneyInput(elements.shippingFee, "shippingFee");
 bindMoneyInput(elements.surcharge, "surcharge");
 bindMoneyInput(elements.discount, "discount");
+elements.splitModeInputs.forEach((input) => {
+  input.addEventListener("change", (event) => {
+    if (!event.target.checked) return;
+    state.splitMode = event.target.value;
+    updateStateAndSummary();
+  });
+});
 
 renderAll();

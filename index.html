@@ -147,10 +147,38 @@
               <div class="people-list" id="people-list"></div>
             </article>
 
-            <article class="panel items-panel">
+            <article class="panel">
               <div class="section-heading">
                 <div>
                   <span class="step">04</span>
+                  <h2>Cách chia tiền</h2>
+                </div>
+              </div>
+              <fieldset class="split-mode-group">
+                <legend class="visually-hidden">Chọn cách chia tiền</legend>
+                <label class="split-option">
+                  <input type="radio" name="split-mode" value="equal" />
+                  <span class="split-option-mark" aria-hidden="true"></span>
+                  <span class="split-option-copy">
+                    <strong>Chia đều tổng thanh toán</strong>
+                    <small>Mỗi người trả một phần bằng nhau từ số tiền cuối cùng của bill.</small>
+                  </span>
+                </label>
+                <label class="split-option">
+                  <input type="radio" name="split-mode" value="byItems" checked />
+                  <span class="split-option-mark" aria-hidden="true"></span>
+                  <span class="split-option-copy">
+                    <strong>Theo món đã gọi</strong>
+                    <small>Món của ai người đó trả; phí và giảm giá vẫn được chia đều.</small>
+                  </span>
+                </label>
+              </fieldset>
+            </article>
+
+            <article class="panel items-panel">
+              <div class="section-heading">
+                <div>
+                  <span class="step">05</span>
                   <h2>Các món đã gọi</h2>
                 </div>
                 <button class="text-button" id="add-item" type="button">+ Thêm món</button>
@@ -169,7 +197,7 @@
             <article class="panel">
               <div class="section-heading">
                 <div>
-                  <span class="step">05</span>
+                  <span class="step">06</span>
                   <h2>Phí & ưu đãi</h2>
                 </div>
                 <span class="split-badge">Chia đều</span>
@@ -202,6 +230,7 @@
             </div>
             <h2 id="summary-name">Bill mới</h2>
             <p class="summary-date" id="summary-date" hidden></p>
+            <p class="summary-split-mode" id="summary-split-mode"></p>
             <div class="summary-rule"></div>
             <div class="person-results" id="person-results"></div>
             <div class="empty-results" id="empty-results">
