@@ -287,8 +287,10 @@ export function parseBillText(rawText) {
   let detectedSubtotal = 0;
   let detectedTotal = 0;
   let discountLinesTotal = 0;
+  let discountLineCount = 0;
   let explicitDiscountTotal = 0;
   let lastItemPriceLineIndex = -2;
+  let hasGroupOwnerHeaders = false;
   const detectedPeople = new Set();
 
   lines.forEach((line, index) => {
@@ -302,10 +304,12 @@ export function parseBillText(rawText) {
     const previousLabel = fold(lines[index - 1] || "");
     const metadataLabel = currentLabel || previousLabel;
     const ownerCandidate = cleanOwnerName(amount ? lineWithoutAmount : line);
-    const namedOwner = groupOwner(ownerCandidate) || explicitOwner(ownerCandidate);
+    const groupedOwner = groupOwner(ownerCandidate);
+    const namedOwner = groupedOwner || explicitOwner(ownerCandidate);
     const ownerHasCalculatedShare = isCalculatedShareMarker(nextLine)
       || (parseAmount(nextLine) && isCalculatedShareMarker(lineAfterNext));
     if (namedOwner && (!amount || ownerHasCalculatedShare)) {
+      if (groupedOwner) hasGroupOwnerHeaders = true;
       currentOwner = namedOwner;
       detectedPeople.add(namedOwner);
       return;
@@ -340,6 +344,7 @@ export function parseBillText(rawText) {
     }
     if (amount && /(giam|khuyen mai|uu dai|voucher|promotion|promo|benefit)/i.test(metadataLabel)) {
       discountLinesTotal += amount;
+      discountLineCount += 1;
       return;
     }
     if (amount && /(phi giao|phi ship|van chuyen|delivery fee)/i.test(metadataLabel)) {
@@ -351,6 +356,7 @@ export function parseBillText(rawText) {
       return;
     }
     if (!amount || isSummaryLine(line)) return;
+    if (amount < 1000) return;
 
     if (/\d+\s*k\b/i.test(line) && lineWithoutAmount && isStandaloneAmountLine(nextLine)) return;
 
@@ -383,17 +389,28 @@ export function parseBillText(rawText) {
     lastItemPriceLineIndex = index;
   });
 
-  result.people = [...new Set([...detectedPeople, ...result.items.map((item) => item.ownerName)])];
+  const inferredLeader = hasGroupOwnerHeaders
+    && result.items.some((item) => item.ownerName === "Chưa xác định");
+  if (inferredLeader) {
+    result.items.forEach((item) => {
+      if (item.ownerName === "Chưa xác định") item.ownerName = "Bạn";
+    });
+  }
+  result.people = [...new Set([
+    ...(inferredLeader ? ["Bạn"] : []),
+    ...detectedPeople,
+    ...result.items.map((item) => item.ownerName),
+  ])];
   result.subtotal = detectedSubtotal || result.items.reduce((sum, item) => sum + item.lineTotal, 0);
   const listedDiscount = explicitDiscountTotal || discountLinesTotal;
   const grossTotal = result.subtotal + result.shippingFee + result.surcharge;
   const reconciledDiscount = detectedTotal && grossTotal >= detectedTotal
     ? grossTotal - detectedTotal
     : 0;
-  result.discount = reconciledDiscount || listedDiscount;
-  result.totalPayable = detectedTotal || Math.max(
-    0,
-    result.subtotal + result.shippingFee + result.surcharge - result.discount,
-  );
+  result.discount = listedDiscount || reconciledDiscount;
+  const calculatedTotal = Math.max(0, grossTotal - result.discount);
+  result.totalPayable = (explicitDiscountTotal || discountLineCount)
+    ? calculatedTotal
+    : detectedTotal || calculatedTotal;
   return result;
 }

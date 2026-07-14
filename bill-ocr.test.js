@@ -73,7 +73,7 @@ test("ưu tiên tổng giảm giá đã công bố để không cộng trùng vo
   assert.deepEqual(parsed.people, ["Mai"]);
 });
 
-test("đối chiếu tổng giảm giá từ số tiền cuối khi OCR bỏ sót voucher", () => {
+test("không dùng tổng thanh toán sai để thổi phồng các ưu đãi đã đọc được", () => {
   const parsed = parseBillText(`
     GrabFood
     Đơn của Mai
@@ -86,8 +86,39 @@ test("đối chiếu tổng giảm giá từ số tiền cuối khi OCR bỏ só
 
   assert.equal(parsed.subtotal, 121000);
   assert.equal(parsed.surcharge, 26000);
-  assert.equal(parsed.totalPayable, 79160);
+  assert.equal(parsed.discount, 14840);
+  assert.equal(parsed.totalPayable, 132160);
+});
+
+test("bỏ mảnh ngày giờ giả, khôi phục trưởng nhóm và không suy ngược giảm giá từ tổng sai", () => {
+  const parsed = parseBillText(`
+    GrabFood
+    14:03 ngày 10 thg 7, 2026
+    14: 279đ
+    1x Matcha Cloudy L 53.000đ
+    Thoa: 1 món
+    1x Matcha Cloudy M 43.000đ
+    DiemVtk: 1 món
+    1x Cà Phê Đen S 25.000đ
+    Tổng tạm tính 121.000đ
+    Phí áp dụng 26.000đ
+    (GrabUnlimited) Giảm 12K phí ship -10.000đ
+    GrabVIP Benefit -10.000đ
+    Giảm đến 10% khi Đặt đơn nhóm -4.840đ
+    Giảm 26K, thêm ưu đãi bên dưới -26.000đ
+    Giảm 9K, thêm ưu đãi bên dưới -9.000đ
+    Giảm 8.000 VND -8.000đ
+    Tổng tiền phải trả 22.160đ
+  `);
+
+  assert.deepEqual(parsed.people, ["Bạn", "Thoa", "DiemVtk"]);
+  assert.deepEqual(parsed.items, [
+    { ownerName: "Bạn", name: "Matcha Cloudy L", quantity: 1, lineTotal: 53000, price: 53000 },
+    { ownerName: "Thoa", name: "Matcha Cloudy M", quantity: 1, lineTotal: 43000, price: 43000 },
+    { ownerName: "DiemVtk", name: "Cà Phê Đen S", quantity: 1, lineTotal: 25000, price: 25000 },
+  ]);
   assert.equal(parsed.discount, 67840);
+  assert.equal(parsed.totalPayable, 79160);
 });
 
 test("tự tính tổng phải trả khi bill không có dòng tổng cuối", () => {
