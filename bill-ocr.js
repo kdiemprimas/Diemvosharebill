@@ -66,6 +66,10 @@ export function parseAmount(value) {
   return hasMoneySignal ? amount : 0;
 }
 
+function hasNegativeAmount(value) {
+  return /[−–—-]\s*(?:\d+(?:[.,]\d+)?\s*k\b|\d[\d\s.,]{2,})/i.test(String(value));
+}
+
 function removeAmount(value) {
   return normalizeLine(
     String(value)
@@ -326,7 +330,7 @@ export function parseBillText(rawText) {
     if (amount && currentOwner && isCalculatedShareMarker(nextLine)) return;
     if (amount && isCalculatedShareMarker(line)) return;
 
-    if (amount && /(tong (?:ma )?giam gia|tong khuyen mai|tong uu dai|total discount)/i.test(metadataLabel)) {
+    if (amount && hasNegativeAmount(line) && /(tong (?:ma )?giam gia|tong khuyen mai|tong uu dai|total discount)/i.test(metadataLabel)) {
       explicitDiscountTotal = amount;
       return;
     }
@@ -342,7 +346,7 @@ export function parseBillText(rawText) {
       detectedSubtotal = amount;
       return;
     }
-    if (amount && /(giam|khuyen mai|uu dai|voucher|promotion|promo|benefit)/i.test(metadataLabel)) {
+    if (amount && hasNegativeAmount(line) && /(giam|khuyen mai|uu dai|voucher|promotion|promo|benefit)/i.test(metadataLabel)) {
       discountLinesTotal += amount;
       discountLineCount += 1;
       return;

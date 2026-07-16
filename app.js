@@ -5,7 +5,7 @@ import {
   parseBillText,
 } from "./bill-ocr.js";
 
-const STORAGE_KEY = "chia-bill-state-v1";
+const STORAGE_KEY = "chia-bill-state-v2";
 const TESSERACT_MODULE_PATH = "./node_modules/tesseract.js/dist/tesseract.esm.min.js";
 const colors = ["#cc6f6d", "#df9668", "#79a8b7", "#9c788c", "#b6a06e", "#6f918e"];
 

@@ -36,4 +36,5 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(html, /app\.js\?v=[a-f0-9]{12}/);
   assert.match(app, /bill-calculator\.js\?v=[a-f0-9]{12}/);
   assert.match(app, /bill-ocr\.js\?v=[a-f0-9]{12}/);
+  assert.match(app, /chia-bill-state-v2/);
 });
