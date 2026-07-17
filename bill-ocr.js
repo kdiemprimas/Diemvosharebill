@@ -346,9 +346,11 @@ export function parseBillText(rawText) {
       detectedSubtotal = amount;
       return;
     }
-    if (amount && hasNegativeAmount(line) && /(giam|khuyen mai|uu dai|voucher|promotion|promo|benefit)/i.test(metadataLabel)) {
-      discountLinesTotal += amount;
-      discountLineCount += 1;
+    if (amount && /(giam|khuyen mai|uu dai|voucher|promotion|promo|benefit)/i.test(metadataLabel)) {
+      if (hasNegativeAmount(line)) {
+        discountLinesTotal += amount;
+        discountLineCount += 1;
+      }
       return;
     }
     if (amount && /(phi giao|phi ship|van chuyen|delivery fee)/i.test(metadataLabel)) {

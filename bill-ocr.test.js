@@ -88,6 +88,40 @@ test("chỉ cộng các giá trị âm thuộc dòng mã giảm", () => {
   assert.equal(parsed.discount, 23840);
 });
 
+test("không biến mảnh khuyến mãi OCR trùng thành phí ship hoặc món", () => {
+  const parsed = parseBillText(`
+    GrabFood
+    Bạn (Trưởng nhóm): 1 món
+    1x Matcha Cloudy L 53.000đ
+    Thoa: 1 món
+    1x Matcha Cloudy M 43.000đ
+    DiemVtk: 1 món
+    1x Cà Phê Đen S 25.000đ
+    Tổng tạm tính 121.000đ
+    Phí áp dụng 26.000đ
+    [GrabUnlimited] Giảm 12K phí ship
+    -12.000đ
+    GrabVIP Benefit -10.000đ
+    Giảm đến 10% khi Đặt đơn nhóm -4.840đ
+    Giảm 26K, thêm ưu đãi bên dưới -26.000đ
+    Giảm 9K, thêm ưu đãi bên dưới -9.000đ
+    Giảm 8.000 VND -8.000đ
+    ‹ Giảm
+    8.000đ
+  `);
+
+  assert.deepEqual(parsed.items.map(({ name, lineTotal }) => ({ name, lineTotal })), [
+    { name: "Matcha Cloudy L", lineTotal: 53000 },
+    { name: "Matcha Cloudy M", lineTotal: 43000 },
+    { name: "Cà Phê Đen S", lineTotal: 25000 },
+  ]);
+  assert.equal(parsed.subtotal, 121000);
+  assert.equal(parsed.shippingFee, 0);
+  assert.equal(parsed.surcharge, 26000);
+  assert.equal(parsed.discount, 69840);
+  assert.equal(parsed.totalPayable, 77160);
+});
+
 test("không dùng tổng thanh toán sai để thổi phồng các ưu đãi đã đọc được", () => {
   const parsed = parseBillText(`
     GrabFood
