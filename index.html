@@ -84,7 +84,7 @@
 
               <div class="ocr-progress" id="ocr-progress" hidden>
                 <div class="progress-track"><span id="ocr-progress-bar"></span></div>
-                <p id="ocr-progress-text">Đang chuẩn bị nhận diện…</p>
+                <p id="ocr-progress-text" role="status" aria-live="polite" aria-atomic="true">Đang chuẩn bị nhận diện…</p>
               </div>
 
               <div class="ocr-result" id="ocr-result" hidden>
@@ -101,8 +101,8 @@
                   <textarea id="ocr-raw-text" rows="8" aria-label="Nội dung OCR"></textarea>
                   <button class="text-button" id="reparse-ocr" type="button">Phân tích lại nội dung</button>
                 </details>
-                <p class="ocr-note">Chỉ các thông tin chính được giữ lại. Hãy kiểm tra tên, món, phí và tổng tiền trước khi áp dụng.</p>
-                <button class="apply-ocr-button" id="apply-ocr" type="button">Dùng dữ liệu này để chia bill</button>
+                <p class="ocr-note">Dữ liệu hợp lệ được tự động cập nhật vào bill. Bạn vẫn có thể kiểm tra và chỉnh lại trước khi chia.</p>
+                <button class="apply-ocr-button" id="apply-ocr" type="button">Áp dụng lại dữ liệu đã đọc</button>
               </div>
 
               <p class="ocr-error" id="ocr-error" role="alert"></p>

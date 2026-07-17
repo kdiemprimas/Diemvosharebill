@@ -42,6 +42,7 @@ if (!["equal", "byItems"].includes(state.splitMode)) state.splitMode = "byItems"
 let selectedBillFile = null;
 let selectedBillUrl = "";
 let parsedOcrBill = null;
+let scanRequestId = 0;
 if (state.items[0] && !state.items[0].ownerId) state.items[0].ownerId = state.people[0]?.id || "all";
 
 const elements = {
@@ -72,6 +73,7 @@ const elements = {
   ocrDetectedList: document.querySelector("#ocr-detected-list"),
   ocrRawText: document.querySelector("#ocr-raw-text"),
   ocrError: document.querySelector("#ocr-error"),
+  uploadPanel: document.querySelector(".upload-panel"),
   splitModeInputs: document.querySelectorAll('input[name="split-mode"]'),
 };
 
@@ -124,14 +126,17 @@ function clearOcrResult() {
   elements.ocrRawText.value = "";
 }
 
-function selectBillImage(file) {
+async function selectBillImage(file) {
+  const requestId = ++scanRequestId;
   clearOcrResult();
   if (!file) return;
   if (!file.type.startsWith("image/")) {
+    setScanBusy(false);
     elements.ocrError.textContent = "Vui lòng chọn file ảnh PNG, JPG hoặc WEBP.";
     return;
   }
   if (file.size > 15 * 1024 * 1024) {
+    setScanBusy(false);
     elements.ocrError.textContent = "Ảnh đang lớn hơn 15 MB. Hãy giảm kích thước ảnh rồi thử lại.";
     return;
   }
@@ -144,9 +149,12 @@ function selectBillImage(file) {
   elements.fileSize.textContent = `${formatFileSize(file.size)} · Ảnh không được lưu lại`;
   elements.uploadDropzone.hidden = true;
   elements.uploadPreview.hidden = false;
+  await scanBillImage(file, requestId);
 }
 
 function removeBillImage() {
+  scanRequestId += 1;
+  setScanBusy(false);
   selectedBillFile = null;
   if (selectedBillUrl) URL.revokeObjectURL(selectedBillUrl);
   selectedBillUrl = "";
@@ -169,6 +177,12 @@ function updateOcrProgress(message) {
   const progress = Math.max(0, Math.min(1, Number(message.progress) || 0));
   elements.ocrProgressBar.style.width = `${Math.round(progress * 100)}%`;
   elements.ocrProgressText.textContent = ocrStatusText[message.status] || "Đang xử lý ảnh bill…";
+}
+
+function setScanBusy(isBusy) {
+  elements.uploadPanel.setAttribute("aria-busy", String(isBusy));
+  elements.scanButton.disabled = isBusy;
+  elements.scanButton.textContent = isBusy ? "Đang đọc bill…" : "Đọc lại ảnh bill";
 }
 
 async function prepareOcrImage(file) {
@@ -255,15 +269,19 @@ function parseAndShowOcr(rawText) {
   renderOcrResult();
 }
 
-async function scanBillImage() {
-  if (!selectedBillFile) return;
+function parseApplyAndShowOcr(rawText) {
+  parseAndShowOcr(rawText);
+  if (parsedOcrBill.items.length) applyOcrBill({ scroll: false });
+}
+
+async function scanBillImage(file = selectedBillFile, requestId = ++scanRequestId) {
+  if (!file) return;
   elements.ocrError.textContent = "";
   elements.ocrResult.hidden = true;
   elements.ocrProgress.hidden = false;
   elements.ocrProgressBar.style.width = "2%";
   elements.ocrProgressText.textContent = "Đang tải bộ nhận diện…";
-  elements.scanButton.disabled = true;
-  elements.scanButton.textContent = "Đang đọc bill…";
+  setScanBusy(true);
 
   let worker;
   try {
@@ -277,9 +295,11 @@ async function scanBillImage() {
       corePath: "./node_modules/tesseract.js-core",
       langPath: "./ocr-data",
       workerBlobURL: false,
-      logger: updateOcrProgress,
+      logger: (message) => {
+        if (requestId === scanRequestId) updateOcrProgress(message);
+      },
     });
-    const prepared = await prepareOcrImage(selectedBillFile);
+    const prepared = await prepareOcrImage(file);
     await worker.setParameters({
       tessedit_pageseg_mode: PSM.SPARSE_TEXT,
       preserve_interword_spaces: "1",
@@ -304,22 +324,25 @@ async function scanBillImage() {
     const rawText = (blocks.length
       ? buildStructuredOcrText(blocks, headerNames, layoutWidth)
       : recognition.data.text).trim();
+    if (requestId !== scanRequestId) return;
     elements.ocrRawText.value = rawText;
-    parseAndShowOcr(rawText);
+    parseApplyAndShowOcr(rawText);
   } catch (error) {
+    if (requestId !== scanRequestId) return;
     console.error("OCR failed", error);
     elements.ocrError.textContent = error.message === "OCR_REQUIRES_LOCALHOST"
       ? "OCR không chạy khi mở trực tiếp file index.html. Hãy mở http://127.0.0.1:4173 rồi thử lại."
       : "Không thể khởi tạo OCR local. Hãy chạy npm install, khởi động lại server rồi thử lại.";
   } finally {
     if (worker) await worker.terminate();
-    elements.ocrProgress.hidden = true;
-    elements.scanButton.disabled = false;
-    elements.scanButton.textContent = "Đọc lại ảnh bill";
+    if (requestId === scanRequestId) {
+      elements.ocrProgress.hidden = true;
+      setScanBusy(false);
+    }
   }
 }
 
-function applyOcrBill() {
+function applyOcrBill({ scroll = true } = {}) {
   if (!parsedOcrBill?.items.length) return;
   const peopleNames = parsedOcrBill.people.length ? parsedOcrBill.people : ["Chưa xác định"];
   const people = peopleNames.map((name) => ({ id: crypto.randomUUID(), name }));
@@ -341,7 +364,7 @@ function applyOcrBill() {
   if (parsedOcrBill.platform !== "Khác") state.platform = parsedOcrBill.platform;
   renderAll();
   persist();
-  document.querySelector(".items-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (scroll) document.querySelector(".items-panel").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderPeople() {
@@ -621,11 +644,18 @@ elements.uploadDropzone.addEventListener("drop", (event) => {
   selectBillImage(event.dataTransfer.files[0]);
 });
 document.querySelector("#remove-bill-image").addEventListener("click", removeBillImage);
-elements.scanButton.addEventListener("click", scanBillImage);
+elements.scanButton.addEventListener("click", () => scanBillImage());
 document.querySelector("#reparse-ocr").addEventListener("click", () => {
-  parseAndShowOcr(elements.ocrRawText.value);
+  parseApplyAndShowOcr(elements.ocrRawText.value);
 });
-document.querySelector("#apply-ocr").addEventListener("click", applyOcrBill);
+elements.ocrRawText.addEventListener("input", () => {
+  window.clearTimeout(elements.ocrRawText.reparseTimer);
+  elements.ocrRawText.reparseTimer = window.setTimeout(
+    () => parseApplyAndShowOcr(elements.ocrRawText.value),
+    350,
+  );
+});
+document.querySelector("#apply-ocr").addEventListener("click", () => applyOcrBill());
 bindMoneyInput(elements.shippingFee, "shippingFee");
 bindMoneyInput(elements.surcharge, "surcharge");
 bindMoneyInput(elements.discount, "discount");

@@ -37,4 +37,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(app, /bill-calculator\.js\?v=[a-f0-9]{12}/);
   assert.match(app, /bill-ocr\.js\?v=[a-f0-9]{12}/);
   assert.match(app, /chia-bill-state-v2/);
+  assert.match(app, /scanBillImage\(file, requestId\)/);
+  assert.match(app, /applyOcrBill\(\{ scroll: false \}\)/);
+  assert.match(app, /ocrRawText\.addEventListener\("input"/);
+  assert.match(html, /id="ocr-progress-text"[^>]+aria-live="polite"/);
 });
