@@ -42,8 +42,9 @@ button { color: inherit; }
   border-bottom: 1px solid rgba(56, 84, 98, 0.16);
 }
 
-.brand { display: flex; align-items: center; gap: 11px; color: var(--ink); font-size: 19px; font-weight: 800; text-decoration: none; }
-.brand-mark { width: 34px; height: 34px; display: grid; place-items: center; color: #fff9f1; background: var(--accent-dark); border-radius: 11px 11px 11px 4px; font-weight: 800; box-shadow: 0 7px 16px rgba(185, 86, 88, 0.2); }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-size: 19px; font-weight: 800; text-decoration: none; }
+.brand-logo { width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 7px 9px rgba(185, 86, 88, 0.2)); transition: transform 180ms ease; }
+.brand:hover .brand-logo { transform: rotate(-5deg) scale(1.05); }
 .save-status { color: var(--muted); font-size: 12px; }
 .save-status::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 7px; background: #6f918e; border-radius: 50%; }
 

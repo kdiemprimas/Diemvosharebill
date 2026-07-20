@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const sourceRoot = dirname(fileURLToPath(import.meta.url));
 const publicFiles = ["index.html", "styles.css", "app.js", "bill-calculator.js", "bill-ocr.js"];
+const imageAssets = ["assets/teolaegi-strawberry-logo.png"];
 
 export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
   const target = resolve(outputDir);
@@ -15,17 +16,25 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
   await rm(target, { recursive: true, force: true });
   await mkdir(target, { recursive: true });
   await Promise.all(publicFiles.map((file) => copyFile(join(sourceRoot, file), join(target, file))));
+  await mkdir(join(target, "assets"), { recursive: true });
+  await Promise.all(imageAssets.map((file) => copyFile(join(sourceRoot, file), join(target, file))));
 
   const sourceContents = await Promise.all(
     publicFiles.map((file) => readFile(join(sourceRoot, file), "utf8")),
   );
+  const imageContents = await Promise.all(imageAssets.map((file) => readFile(join(sourceRoot, file))));
   const assetVersion = createHash("sha256")
     .update(sourceContents.join("\0"))
+    .update(Buffer.concat(imageContents))
     .digest("hex")
     .slice(0, 12);
   const versionedHtml = sourceContents[publicFiles.indexOf("index.html")]
     .replace("./styles.css", `./styles.css?v=${assetVersion}`)
-    .replace("./app.js", `./app.js?v=${assetVersion}`);
+    .replace("./app.js", `./app.js?v=${assetVersion}`)
+    .replaceAll(
+      "./assets/teolaegi-strawberry-logo.png",
+      `./assets/teolaegi-strawberry-logo.png?v=${assetVersion}`,
+    );
   const versionedApp = sourceContents[publicFiles.indexOf("app.js")]
     .replace("./bill-calculator.js", `./bill-calculator.js?v=${assetVersion}`)
     .replace("./bill-ocr.js", `./bill-ocr.js?v=${assetVersion}`);
