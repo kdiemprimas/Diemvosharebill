@@ -17,7 +17,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
     "app.js",
     "bill-calculator.js",
     "bill-ocr.js",
-    "assets/teolaegi-strawberry-original.jpg",
+    "assets/teolaegi-pet-logo.png",
     ".nojekyll",
     "node_modules/tesseract.js/dist/tesseract.esm.min.js",
     "node_modules/tesseract.js/dist/worker.min.js",
@@ -30,8 +30,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   const html = await readFile(join(outputDir, "index.html"), "utf8");
   const app = await readFile(join(outputDir, "app.js"), "utf8");
   assert.match(html, /<title>Chia Bill<\/title>/);
-  assert.match(html, /rel="icon"[^>]+teolaegi-strawberry-original\.jpg/);
-  assert.match(html, /class="brand-logo"[^>]+teolaegi-strawberry-original\.jpg/);
+  assert.match(html, /rel="icon"[^>]+teolaegi-pet-logo\.png/);
+  assert.match(html, /class="brand-logo"[^>]+teolaegi-pet-logo\.png/);
   assert.match(html, /name="split-mode"/);
   assert.match(html, /Chia đều tổng thanh toán/);
   assert.match(html, /Theo món đã gọi/);
