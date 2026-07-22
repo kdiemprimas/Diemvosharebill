@@ -1,4 +1,4 @@
-# Chia Bill đồ ăn
+# Ai Ăn Nấy Trả
 
 Webapp nhỏ để chia tiền bill GrabFood, beFood, ShopeeFood hoặc nền tảng khác.
 

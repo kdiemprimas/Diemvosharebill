@@ -39,5 +39,5 @@ createServer(async (request, response) => {
     response.end("Không tìm thấy trang");
   }
 }).listen(port, "127.0.0.1", () => {
-  console.log(`Chia Bill đang chạy tại http://127.0.0.1:${port}`);
+  console.log(`Ai Ăn Nấy Trả đang chạy tại http://127.0.0.1:${port}`);
 });

@@ -29,7 +29,10 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   await Promise.all(expectedFiles.map((path) => access(join(outputDir, path))));
   const html = await readFile(join(outputDir, "index.html"), "utf8");
   const app = await readFile(join(outputDir, "app.js"), "utf8");
-  assert.match(html, /<title>Chia Bill<\/title>/);
+  assert.match(html, /<title>Ai \u0102n N\u1ea5y Tr\u1ea3<\/title>/);
+  assert.match(html, /aria-label="Trang ch\u1ee7 Ai \u0102n N\u1ea5y Tr\u1ea3"/);
+  assert.match(html, /class="brand-logo"[\s\S]*?<span>Ai \u0102n N\u1ea5y Tr\u1ea3<\/span>/);
+  assert.match(html, /Ai \u0102n N\u1ea5y Tr\u1ea3 · T\u00ednh r\u00f5 \u0111\u1ec3 vui l\u00e2u/);
   assert.match(html, /rel="icon"[^>]+teolaegi-pet-logo\.png/);
   assert.match(html, /class="brand-logo"[^>]+teolaegi-pet-logo\.png/);
   assert.match(html, /name="split-mode"/);
