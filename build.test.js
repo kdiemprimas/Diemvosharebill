@@ -43,5 +43,9 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(app, /scanBillImage\(file, requestId\)/);
   assert.match(app, /applyOcrBill\(\{ scroll: false \}\)/);
   assert.match(app, /ocrRawText\.addEventListener\("input"/);
+  assert.match(
+    app,
+    /function resetBill\(\)[\s\S]*?removeBillImage\(\);[\s\S]*?uploadPanel\.scrollIntoView/,
+  );
   assert.match(html, /id="ocr-progress-text"[^>]+aria-live="polite"/);
 });

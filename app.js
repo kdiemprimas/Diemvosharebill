@@ -575,10 +575,12 @@ async function copyResult() {
 
 function resetBill() {
   if (!window.confirm("Tạo bill mới và xóa dữ liệu hiện tại?")) return;
+  removeBillImage();
   state = defaultState();
   state.items[0].ownerId = state.people[0].id;
   renderAll();
   persist();
+  elements.uploadPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderAll() {
