@@ -47,5 +47,18 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
     app,
     /function resetBill\(\)[\s\S]*?removeBillImage\(\);[\s\S]*?uploadPanel\.scrollIntoView/,
   );
+  assert.match(html, /<dialog[^>]+id="reset-confirm-dialog"/);
+  assert.match(html, /B\u1ea1n mu\u1ed1n b\u1eaft \u0111\u1ea7u bill m\u1edbi\?/);
+  assert.match(html, /Gi\u1eef bill hi\u1ec7n t\u1ea1i/);
+  assert.match(html, /id="confirm-reset-bill"[^>]*>\s*T\u1ea1o bill m\u1edbi/);
+  assert.doesNotMatch(app, /window\.confirm\(/);
+  assert.match(
+    app,
+    /#reset-bill"\)\.addEventListener\("click", openResetDialog\)/,
+  );
+  assert.match(
+    app,
+    /#confirm-reset-bill"\)\.addEventListener\("click", resetBill\)/,
+  );
   assert.match(html, /id="ocr-progress-text"[^>]+aria-live="polite"/);
 });

@@ -266,6 +266,39 @@
       </footer>
     </div>
 
+    <dialog
+      class="confirm-dialog"
+      id="reset-confirm-dialog"
+      aria-labelledby="reset-confirm-title"
+      aria-describedby="reset-confirm-description"
+    >
+      <div class="confirm-dialog-content">
+        <img
+          class="confirm-dialog-pet"
+          src="./assets/teolaegi-pet-logo.png"
+          width="72"
+          height="78"
+          alt=""
+          aria-hidden="true"
+        />
+        <div class="confirm-dialog-copy">
+          <span class="confirm-dialog-eyebrow">Bắt đầu lại</span>
+          <h2 id="reset-confirm-title">Bạn muốn bắt đầu bill mới?</h2>
+          <p id="reset-confirm-description">
+            Bill và ảnh hiện tại sẽ được xóa. Sau đó bạn có thể tải ảnh bill mới lên ngay.
+          </p>
+        </div>
+        <form class="confirm-dialog-actions" method="dialog">
+          <button class="confirm-dialog-cancel" type="submit" value="cancel">
+            Giữ bill hiện tại
+          </button>
+          <button class="confirm-dialog-submit" id="confirm-reset-bill" type="button">
+            Tạo bill mới
+          </button>
+        </form>
+      </div>
+    </dialog>
+
     <template id="person-template">
       <div class="person-chip">
         <span class="avatar"></span>

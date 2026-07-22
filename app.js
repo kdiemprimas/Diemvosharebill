@@ -75,6 +75,7 @@ const elements = {
   ocrError: document.querySelector("#ocr-error"),
   uploadPanel: document.querySelector(".upload-panel"),
   splitModeInputs: document.querySelectorAll('input[name="split-mode"]'),
+  resetDialog: document.querySelector("#reset-confirm-dialog"),
 };
 
 const money = new Intl.NumberFormat("vi-VN");
@@ -573,8 +574,24 @@ async function copyResult() {
   window.setTimeout(() => (button.textContent = "Sao chép kết quả"), 1600);
 }
 
+function openResetDialog() {
+  if (typeof elements.resetDialog.showModal === "function") {
+    elements.resetDialog.showModal();
+    return;
+  }
+  elements.resetDialog.setAttribute("open", "");
+}
+
+function closeResetDialog() {
+  if (typeof elements.resetDialog.close === "function") {
+    elements.resetDialog.close();
+    return;
+  }
+  elements.resetDialog.removeAttribute("open");
+}
+
 function resetBill() {
-  if (!window.confirm("Tạo bill mới và xóa dữ liệu hiện tại?")) return;
+  closeResetDialog();
   removeBillImage();
   state = defaultState();
   state.items[0].ownerId = state.people[0].id;
@@ -631,7 +648,8 @@ document.querySelector("#add-item").addEventListener("click", () => {
   elements.itemsList.lastElementChild?.querySelector(".item-name")?.focus();
 });
 document.querySelector("#copy-result").addEventListener("click", copyResult);
-document.querySelector("#reset-bill").addEventListener("click", resetBill);
+document.querySelector("#reset-bill").addEventListener("click", openResetDialog);
+document.querySelector("#confirm-reset-bill").addEventListener("click", resetBill);
 elements.imageInput.addEventListener("change", (event) => selectBillImage(event.target.files[0]));
 elements.uploadDropzone.addEventListener("dragover", (event) => {
   event.preventDefault();
