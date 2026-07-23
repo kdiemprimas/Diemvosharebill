@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#c45f5e" />
+    <meta
+      name="description"
+      content="Xem lại lịch sử những bill đã chia trên Ai Ăn Nấy Trả."
+    />
+    <title>Lịch sử chia bill · Ai Ăn Nấy Trả</title>
+    <link rel="icon" type="image/png" href="./assets/teolaegi-pet-logo.png" />
+    <link rel="apple-touch-icon" href="./assets/teolaegi-pet-logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="melo-stage" aria-hidden="true">
+      <div class="melo-walker">
+        <span class="melo-sprite">
+          <img src="./assets/melo-spritesheet.webp" alt="" />
+        </span>
+      </div>
+    </div>
+
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="./index.html" aria-label="Trang chủ Ai Ăn Nấy Trả">
+          <img
+            class="brand-logo"
+            src="./assets/teolaegi-pet-logo.png"
+            width="48"
+            height="48"
+            alt=""
+            aria-hidden="true"
+          />
+          <span>Ai Ăn Nấy Trả</span>
+        </a>
+        <div class="topbar-actions">
+          <nav class="top-nav" aria-label="Điều hướng chính">
+            <a class="top-nav-link" href="./index.html">Chia bill</a>
+            <a class="top-nav-link is-active" href="./history.html" aria-current="page">Lịch sử</a>
+          </nav>
+          <div class="save-status">Lưu trên thiết bị</div>
+        </div>
+      </header>
+
+      <main class="history-main">
+        <section class="history-hero">
+          <div>
+            <p class="eyebrow">Những lần đã chia</p>
+            <h1>Lịch sử<br /><span>chia bill.</span></h1>
+            <p class="hero-copy">
+              Mỗi bill được lưu sau khi bạn xác nhận chia. Dữ liệu chỉ nằm trên thiết bị này.
+            </p>
+          </div>
+          <div class="history-count-card" aria-live="polite">
+            <strong id="history-count">0</strong>
+            <span>bill đã lưu</span>
+          </div>
+        </section>
+
+        <section class="history-section" aria-labelledby="history-heading">
+          <div class="history-section-heading">
+            <div>
+              <p class="eyebrow">Gần đây nhất</p>
+              <h2 id="history-heading">Các bill đã chia</h2>
+            </div>
+            <button class="history-clear-button" id="clear-history" type="button" hidden>
+              Xóa toàn bộ lịch sử
+            </button>
+          </div>
+
+          <div class="history-list" id="history-list"></div>
+
+          <div class="history-empty" id="history-empty">
+            <img
+              src="./assets/teolaegi-pet-logo.png"
+              width="96"
+              height="104"
+              alt=""
+              aria-hidden="true"
+            />
+            <h2>Chưa có bill nào trong lịch sử</h2>
+            <p>Sau khi kiểm tra và xác nhận chia bill, kết quả sẽ xuất hiện tại đây.</p>
+            <a href="./index.html">Bắt đầu chia bill</a>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <p>Ai Ăn Nấy Trả · Tính rõ để vui lâu</p>
+        <p>Lịch sử chỉ được lưu trên trình duyệt của bạn.</p>
+      </footer>
+    </div>
+
+    <dialog
+      class="confirm-dialog"
+      id="history-delete-dialog"
+      aria-labelledby="history-delete-title"
+      aria-describedby="history-delete-description"
+    >
+      <div class="confirm-dialog-content">
+        <img
+          class="confirm-dialog-pet"
+          src="./assets/teolaegi-pet-logo.png"
+          width="72"
+          height="78"
+          alt=""
+          aria-hidden="true"
+        />
+        <div class="confirm-dialog-copy">
+          <span class="confirm-dialog-eyebrow">Dọn lịch sử</span>
+          <h2 id="history-delete-title">Xóa bill này?</h2>
+          <p id="history-delete-description">
+            Thông tin đã xóa sẽ không thể khôi phục trên thiết bị này.
+          </p>
+        </div>
+        <form class="confirm-dialog-actions" method="dialog">
+          <button class="confirm-dialog-cancel" type="submit" value="cancel">
+            Giữ lại
+          </button>
+          <button class="confirm-dialog-submit" id="confirm-delete-history" type="button">
+            Xóa khỏi lịch sử
+          </button>
+        </form>
+      </div>
+    </dialog>
+
+    <script type="module" src="./history.js"></script>
+  </body>
+</html>

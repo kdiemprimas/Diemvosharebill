@@ -4,7 +4,16 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const sourceRoot = dirname(fileURLToPath(import.meta.url));
-const publicFiles = ["index.html", "styles.css", "app.js", "bill-calculator.js", "bill-ocr.js"];
+const publicFiles = [
+  "index.html",
+  "history.html",
+  "styles.css",
+  "app.js",
+  "history.js",
+  "bill-calculator.js",
+  "bill-ocr.js",
+  "bill-history.js",
+];
 const imageAssets = [
   "assets/teolaegi-pet-logo.png",
   "assets/melo-spritesheet.webp",
@@ -31,9 +40,9 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
     .update(Buffer.concat(imageContents))
     .digest("hex")
     .slice(0, 12);
-  const versionedHtml = sourceContents[publicFiles.indexOf("index.html")]
+  const versionHtml = (html, scriptName) => html
     .replace("./styles.css", `./styles.css?v=${assetVersion}`)
-    .replace("./app.js", `./app.js?v=${assetVersion}`)
+    .replace(`./${scriptName}`, `./${scriptName}?v=${assetVersion}`)
     .replaceAll(
       "./assets/teolaegi-pet-logo.png",
       `./assets/teolaegi-pet-logo.png?v=${assetVersion}`,
@@ -42,12 +51,25 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
       "./assets/melo-spritesheet.webp",
       `./assets/melo-spritesheet.webp?v=${assetVersion}`,
     );
+  const versionedHtml = versionHtml(
+    sourceContents[publicFiles.indexOf("index.html")],
+    "app.js",
+  );
+  const versionedHistoryHtml = versionHtml(
+    sourceContents[publicFiles.indexOf("history.html")],
+    "history.js",
+  );
   const versionedApp = sourceContents[publicFiles.indexOf("app.js")]
     .replace("./bill-calculator.js", `./bill-calculator.js?v=${assetVersion}`)
-    .replace("./bill-ocr.js", `./bill-ocr.js?v=${assetVersion}`);
+    .replace("./bill-ocr.js", `./bill-ocr.js?v=${assetVersion}`)
+    .replace("./bill-history.js", `./bill-history.js?v=${assetVersion}`);
+  const versionedHistoryApp = sourceContents[publicFiles.indexOf("history.js")]
+    .replace("./bill-history.js", `./bill-history.js?v=${assetVersion}`);
   await Promise.all([
     writeFile(join(target, "index.html"), versionedHtml, "utf8"),
+    writeFile(join(target, "history.html"), versionedHistoryHtml, "utf8"),
     writeFile(join(target, "app.js"), versionedApp, "utf8"),
+    writeFile(join(target, "history.js"), versionedHistoryApp, "utf8"),
   ]);
 
   await mkdir(join(target, "node_modules", "tesseract.js", "dist"), { recursive: true });

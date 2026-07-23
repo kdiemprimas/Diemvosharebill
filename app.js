@@ -1,4 +1,5 @@
 import { calculateBill, calculateEqualSplit } from "./bill-calculator.js";
+import { createHistoryRecord, upsertHistoryRecord } from "./bill-history.js";
 import {
   buildStructuredOcrText,
   findTemporaryTotalRows,
@@ -28,6 +29,7 @@ const defaultState = () => ({
   discount: 20000,
   detectedTotalPayable: 0,
   splitMode: "byItems",
+  historyRecordId: "",
 });
 
 function loadState() {
@@ -407,6 +409,7 @@ function applyOcrBill({ scroll = true } = {}) {
   const people = peopleNames.map((name) => ({ id: crypto.randomUUID(), name }));
   const peopleByName = new Map(people.map((person) => [person.name, person.id]));
 
+  state.historyRecordId = "";
   state.people = people;
   state.items = parsedOcrBill.items.map((item) => ({
     id: crypto.randomUUID(),
@@ -651,7 +654,27 @@ function confirmSplit() {
 
   isSplitConfirmed = true;
   splitChangedAfterConfirmation = false;
+  const bill = getCalculatedBill();
+  const recordId = state.historyRecordId || crypto.randomUUID();
+  const historyRecord = createHistoryRecord({
+    id: recordId,
+    confirmedAt: new Date().toISOString(),
+    state,
+    bill,
+  });
+  let historySaved = false;
+  try {
+    upsertHistoryRecord(localStorage, historyRecord);
+    state.historyRecordId = recordId;
+    persist();
+    historySaved = true;
+  } catch {
+    // The split result should remain usable when browser storage is unavailable.
+  }
   renderSummary();
+  if (!historySaved && !elements.validation.textContent) {
+    elements.validation.textContent = "Đã chia bill nhưng chưa thể lưu vào lịch sử trên thiết bị này.";
+  }
   document.querySelector(".summary-card").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 

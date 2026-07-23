@@ -13,10 +13,13 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
 
   const expectedFiles = [
     "index.html",
+    "history.html",
     "styles.css",
     "app.js",
+    "history.js",
     "bill-calculator.js",
     "bill-ocr.js",
+    "bill-history.js",
     "assets/teolaegi-pet-logo.png",
     "assets/melo-spritesheet.webp",
     ".nojekyll",
@@ -38,6 +41,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(html, /class="brand-logo"[^>]+teolaegi-pet-logo\.png/);
   assert.match(html, /class="melo-stage"[^>]+aria-hidden="true"/);
   assert.match(html, /class="melo-sprite"/);
+  assert.match(html, /href="\.\/history\.html"/);
   assert.match(html, /melo-spritesheet\.webp\?v=[a-f0-9]{12}/);
   assert.match(html, /name="split-mode"/);
   assert.match(html, /id="bill-image-input"[\s\S]*?multiple/);
@@ -51,6 +55,14 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(html, /app\.js\?v=[a-f0-9]{12}/);
   assert.match(app, /bill-calculator\.js\?v=[a-f0-9]{12}/);
   assert.match(app, /bill-ocr\.js\?v=[a-f0-9]{12}/);
+  assert.match(app, /bill-history\.js\?v=[a-f0-9]{12}/);
+  const historyHtml = await readFile(join(outputDir, "history.html"), "utf8");
+  const historyApp = await readFile(join(outputDir, "history.js"), "utf8");
+  assert.match(historyHtml, /<title>Lịch sử chia bill · Ai Ăn Nấy Trả<\/title>/);
+  assert.match(historyHtml, /id="history-list"/);
+  assert.match(historyHtml, /id="history-empty"/);
+  assert.match(historyHtml, /history\.js\?v=[a-f0-9]{12}/);
+  assert.match(historyApp, /bill-history\.js\?v=[a-f0-9]{12}/);
   const css = await readFile(join(outputDir, "styles.css"), "utf8");
   assert.match(css, /@keyframes melo-walk-across/);
   assert.match(css, /@keyframes melo-walk-frames/);
