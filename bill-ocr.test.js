@@ -27,6 +27,64 @@ test("bỏ trang OCR trống nhưng vẫn giữ thứ tự các trang còn lại
   );
 });
 
+test("chỉ tính một lần các dòng tổng, phí và giảm giá lặp ở mỗi ảnh", () => {
+  const merged = mergeOcrPageTexts([
+    `Bạn: 1 món
+    1x Matcha Cloudy L
+    53.000đ
+    Tổng tạm tính 96.000đ
+    Phí giao hàng 12.000đ
+    Giảm giá -10.000đ`,
+    `Thoa: 1 món
+    1x Matcha Cloudy M
+    43.000đ
+    Tổng tạm tính 96.000đ
+    Phí giao hàng 12.000đ
+    Giảm giá -10.000đ`,
+  ]);
+  const parsed = parseBillText(merged);
+
+  assert.equal(parsed.items.length, 2);
+  assert.equal(parsed.subtotal, 96000);
+  assert.equal(parsed.shippingFee, 12000);
+  assert.equal(parsed.discount, 10000);
+});
+
+test("bỏ cụm món lặp ở ảnh sau dù không nằm sát mép ảnh", () => {
+  const merged = mergeOcrPageTexts([
+    "Bạn: 1 món\n1x Matcha Cloudy L\n53.000đ\nNội dung cuối ảnh",
+    "Đầu ảnh tiếp theo\nBạn: 1 món\n1x Matcha Cloudy L\n53.000đ\nThoa: 1 món\n1x Matcha Cloudy M\n43.000đ",
+  ]);
+  const parsed = parseBillText(merged);
+
+  assert.deepEqual(parsed.items.map(({ ownerName, name }) => ({ ownerName, name })), [
+    { ownerName: "Bạn", name: "Matcha Cloudy L" },
+    { ownerName: "Thoa", name: "Matcha Cloudy M" },
+  ]);
+});
+
+test("vẫn giữ giá giống nhau khi chúng thuộc hai món khác nhau", () => {
+  const merged = mergeOcrPageTexts([
+    "Bạn: 1 món\n1x Trà đào\n50.000đ",
+    "Thoa: 1 món\n1x Cà phê\n50.000đ",
+  ]);
+
+  assert.equal(merged.match(/50\.000đ/g)?.length, 2);
+});
+
+test("vẫn giữ cùng một món khi hai người khác nhau thực sự cùng đặt", () => {
+  const merged = mergeOcrPageTexts([
+    "Bạn: 1 món\n1x Matcha Cloudy L\n53.000đ",
+    "Thoa: 1 món\n1x Matcha Cloudy L\n53.000đ",
+  ]);
+  const parsed = parseBillText(merged);
+
+  assert.deepEqual(parsed.items.map(({ ownerName, name }) => ({ ownerName, name })), [
+    { ownerName: "Bạn", name: "Matcha Cloudy L" },
+    { ownerName: "Thoa", name: "Matcha Cloudy L" },
+  ]);
+});
+
 test("đọc các kiểu định dạng tiền Việt Nam phổ biến", () => {
   assert.equal(parseAmount("45.000đ"), 45000);
   assert.equal(parseAmount("50,000 VND"), 50000);

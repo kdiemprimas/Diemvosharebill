@@ -54,6 +54,23 @@ function normalizeLine(value) {
 export function mergeOcrPageTexts(pageTexts) {
   const mergedLines = [];
 
+  const mergeKey = (line) => fold(normalizeLine(line))
+    .replace(/[.,](?=\d{3}\b)/g, "")
+    .replace(/\s+/g, " ");
+  const repeatedSingletonIsSafe = (line) => {
+    const key = mergeKey(line);
+    return Boolean(parseOrderDate([line]))
+      || (Boolean(parseAmount(line)) && isSummaryLine(line))
+      || /^(?:grabfood|befood|shopeefood|chi tiet thanh toan|chi tiet don hang)$/i.test(key);
+  };
+  const ownerContext = (lines, index) => {
+    for (let cursor = index; cursor >= Math.max(0, index - 6); cursor -= 1) {
+      const owner = groupOwner(lines[cursor]) || explicitOwner(lines[cursor]);
+      if (owner) return fold(owner);
+    }
+    return "";
+  };
+
   for (const pageText of pageTexts || []) {
     const pageLines = String(pageText || "")
       .split(/\r?\n/)
@@ -61,17 +78,51 @@ export function mergeOcrPageTexts(pageTexts) {
       .filter(Boolean);
     if (!pageLines.length) continue;
 
-    let overlap = 0;
-    const maxOverlap = Math.min(50, mergedLines.length, pageLines.length);
-    for (let size = maxOverlap; size > 0; size -= 1) {
-      const previousTail = mergedLines.slice(-size).map(normalizeLine);
-      const nextHead = pageLines.slice(0, size).map(normalizeLine);
-      if (previousTail.every((line, index) => line === nextHead[index])) {
-        overlap = size;
-        break;
+    const referenceLines = [...mergedLines];
+    const referenceKeys = referenceLines.map(mergeKey);
+    const referenceCounts = new Map();
+    referenceKeys.forEach((key) => referenceCounts.set(key, (referenceCounts.get(key) || 0) + 1));
+    const pageKeys = pageLines.map(mergeKey);
+    const pageSafeOrdinals = [];
+    const pageCounts = new Map();
+    pageLines.forEach((line, index) => {
+      if (!repeatedSingletonIsSafe(line)) return;
+      const key = pageKeys[index];
+      const ordinal = (pageCounts.get(key) || 0) + 1;
+      pageCounts.set(key, ordinal);
+      pageSafeOrdinals[index] = ordinal;
+    });
+
+    for (let pageIndex = 0; pageIndex < pageLines.length;) {
+      let repeatedRun = 0;
+      for (let referenceIndex = 0; referenceIndex < referenceLines.length; referenceIndex += 1) {
+        let run = 0;
+        while (
+          pageIndex + run < pageLines.length
+          && referenceIndex + run < referenceLines.length
+          && pageKeys[pageIndex + run] === referenceKeys[referenceIndex + run]
+        ) {
+          run += 1;
+        }
+        if (run < 2 || run <= repeatedRun) continue;
+        const pageOwner = ownerContext(pageLines, pageIndex);
+        const referenceOwner = ownerContext(referenceLines, referenceIndex);
+        if (pageOwner && referenceOwner && pageOwner !== referenceOwner) continue;
+        repeatedRun = run;
       }
+
+      if (repeatedRun >= 2) {
+        pageIndex += repeatedRun;
+        continue;
+      }
+
+      const line = pageLines[pageIndex];
+      const key = pageKeys[pageIndex];
+      const repeatedSafeValue = repeatedSingletonIsSafe(line)
+        && pageSafeOrdinals[pageIndex] <= (referenceCounts.get(key) || 0);
+      if (!repeatedSafeValue) mergedLines.push(line);
+      pageIndex += 1;
     }
-    mergedLines.push(...pageLines.slice(overlap));
   }
 
   return mergedLines.join("\n");
