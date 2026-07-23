@@ -176,6 +176,7 @@ function isSummaryLine(value) {
 
 function cleanOwnerName(value) {
   return normalizeLine(value)
+    .replace(/^[“”"'`´]+\s*|\s*[“”"'`´]+$/g, "")
     .replace(/[\^~ˆ]+\s*$/g, "")
     .replace(/\s*=\s*$/g, "")
     .replace(/\s+[x×]\s*$/i, "")
@@ -193,7 +194,10 @@ function isCalculatedShareMarker(value) {
 
 function isNonItemContent(value) {
   const label = fold(value);
-  return /xem\s*lo\s*trinh|apple\s*pay|^option\s*\d+|^chon\s*size|^chi\s*tiet\s*thanh\s*toan|\b\d+(?:[.,]\d+)?\s*km\b|\b\d{1,2}:\d{2}\b/i.test(label);
+  return /xem\s*lo\s*trinh|apple\s*pay|^option\s*\d+|^chon\s*size|^chi\s*tiet\s*thanh\s*toan|\b\d+(?:[.,]\d+)?\s*km\b|\b\d{1,2}:\d{2}\b/i.test(label)
+    || /\b(?:dung|su\s*dung|da\s*dung|hoan)\s*\d[\d\s.,]*\s*(?:xu|diem)\b|\b(?:xu|diem)\s*(?:be\s*one|beone|thuong)\b/i.test(label)
+    || /\bma\s*(?:don(?:\s*hang)?|giao\s*dich|thanh\s*toan|hoa\s*don)\b|\b(?:order|booking|transaction|payment|invoice)\s*(?:id|code|number|no)\b/i.test(label)
+    || /\b(?:hotline|so\s*dien\s*thoai|phone|dia\s*chi|address|tai\s*xe|shipper|ma\s*khach\s*hang)\b/i.test(label);
 }
 
 function isStandaloneAmountLine(value) {
@@ -440,6 +444,7 @@ export function parseBillText(rawText) {
     }
     if (!amount || isSummaryLine(line)) return;
     if (amount < 1000) return;
+    if (/^\s*\+\s*\d/.test(line)) return;
 
     if (/\d+\s*k\b/i.test(line) && lineWithoutAmount && isStandaloneAmountLine(nextLine)) return;
 

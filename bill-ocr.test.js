@@ -91,6 +91,46 @@ test("đọc các kiểu định dạng tiền Việt Nam phổ biến", () => {
   assert.equal(parseAmount("32k"), 32000);
 });
 
+test("không biến xu beOne, số cộng rời và mã đơn thành món ăn", () => {
+  const parsed = parseBillText(`
+    beFood
+    20/07/2026
+    Lê Tiến
+    1 phần
+    1x Cà Phê Phin Đen Đá (Coffee)
+    35.000đ
+    Dùng 9.000 xu beOne
+    +12.000đ
+    Mã đơn: 75857043 &
+    "Võ Diễm
+    1 phần
+    1x Americano Nước Dừa
+    59.000đ
+    1x Bánh Mì Que Gà Phô Mai
+    19.000đ
+    Nguyễn Minh Nhật
+    1 phần
+    1x Combo Sáng Highlands 45K
+    59.000đ
+    Tổng tạm tính 172.000đ
+    Phụ thu 22.000đ
+    Giảm giá -65.000đ
+    Tổng thanh toán 129.000đ
+  `);
+
+  assert.deepEqual(parsed.items.map(({ ownerName, name, lineTotal }) => ({
+    ownerName,
+    name,
+    lineTotal,
+  })), [
+    { ownerName: "Lê Tiến", name: "Cà Phê Phin Đen Đá (Coffee)", lineTotal: 35000 },
+    { ownerName: "Võ Diễm", name: "Americano Nước Dừa", lineTotal: 59000 },
+    { ownerName: "Võ Diễm", name: "Bánh Mì Que Gà Phô Mai", lineTotal: 19000 },
+    { ownerName: "Nguyễn Minh Nhật", name: "Combo Sáng Highlands 45K", lineTotal: 59000 },
+  ]);
+  assert.equal(parsed.subtotal, 172000);
+});
+
 test("chỉ giữ thông tin chính từ bill đặt theo nhóm", () => {
   const parsed = parseBillText(`
     GrabFood
