@@ -484,11 +484,12 @@ export function parseBillText(rawText) {
       if (item.ownerName === "Chưa xác định") item.ownerName = "Bạn";
     });
   }
+  const ownersWithItems = new Set(result.items.map((item) => item.ownerName));
   result.people = [...new Set([
     ...(inferredLeader ? ["Bạn"] : []),
     ...detectedPeople,
     ...result.items.map((item) => item.ownerName),
-  ])];
+  ])].filter((person) => ownersWithItems.has(person));
   result.subtotal = detectedSubtotal || result.items.reduce((sum, item) => sum + item.lineTotal, 0);
   const listedDiscount = explicitDiscountTotal || discountLinesTotal;
   const grossTotal = result.subtotal + result.shippingFee + result.surcharge;
