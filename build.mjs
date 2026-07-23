@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 
 const sourceRoot = dirname(fileURLToPath(import.meta.url));
 const publicFiles = ["index.html", "styles.css", "app.js", "bill-calculator.js", "bill-ocr.js"];
-const imageAssets = ["assets/teolaegi-pet-logo.png"];
+const imageAssets = [
+  "assets/teolaegi-pet-logo.png",
+  "assets/melo-spritesheet.webp",
+];
 
 export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
   const target = resolve(outputDir);
@@ -34,6 +37,10 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
     .replaceAll(
       "./assets/teolaegi-pet-logo.png",
       `./assets/teolaegi-pet-logo.png?v=${assetVersion}`,
+    )
+    .replaceAll(
+      "./assets/melo-spritesheet.webp",
+      `./assets/melo-spritesheet.webp?v=${assetVersion}`,
     );
   const versionedApp = sourceContents[publicFiles.indexOf("app.js")]
     .replace("./bill-calculator.js", `./bill-calculator.js?v=${assetVersion}`)
