@@ -51,6 +51,32 @@ function normalizeLine(value) {
     .trim();
 }
 
+export function mergeOcrPageTexts(pageTexts) {
+  const mergedLines = [];
+
+  for (const pageText of pageTexts || []) {
+    const pageLines = String(pageText || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (!pageLines.length) continue;
+
+    let overlap = 0;
+    const maxOverlap = Math.min(50, mergedLines.length, pageLines.length);
+    for (let size = maxOverlap; size > 0; size -= 1) {
+      const previousTail = mergedLines.slice(-size).map(normalizeLine);
+      const nextHead = pageLines.slice(0, size).map(normalizeLine);
+      if (previousTail.every((line, index) => line === nextHead[index])) {
+        overlap = size;
+        break;
+      }
+    }
+    mergedLines.push(...pageLines.slice(overlap));
+  }
+
+  return mergedLines.join("\n");
+}
+
 export function parseAmount(value) {
   const text = String(value).toLowerCase();
   const matches = [

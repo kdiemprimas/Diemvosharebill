@@ -68,6 +68,7 @@
                 class="visually-hidden"
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
+                multiple
               />
               <label class="upload-dropzone" id="upload-dropzone" for="bill-image-input">
                 <span class="upload-icon" aria-hidden="true">
@@ -75,18 +76,22 @@
                     <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
                   </svg>
                 </span>
-                <strong>Chọn hoặc kéo ảnh bill vào đây</strong>
-                <span>Ảnh chụp màn hình GrabFood, beFood, ShopeeFood · PNG, JPG hoặc WEBP</span>
+                <strong>Chọn hoặc kéo các ảnh bill vào đây</strong>
+                <span>Tối đa 10 ảnh theo đúng thứ tự bill · PNG, JPG hoặc WEBP</span>
               </label>
 
               <div class="upload-preview" id="upload-preview" hidden>
-                <img id="bill-image-preview" alt="Ảnh bill đã chọn" />
+                <div
+                  class="upload-preview-list"
+                  id="bill-image-preview-list"
+                  aria-label="Các ảnh bill đã chọn"
+                ></div>
                 <div class="upload-file-info">
                   <strong id="bill-file-name"></strong>
                   <span id="bill-file-size"></span>
                   <div class="upload-actions">
-                    <button class="scan-button" id="scan-bill" type="button">Đọc thông tin từ ảnh</button>
-                    <button class="remove-image-button" id="remove-bill-image" type="button">Chọn ảnh khác</button>
+                    <button class="scan-button" id="scan-bill" type="button">Đọc các ảnh bill</button>
+                    <button class="remove-image-button" id="remove-bill-image" type="button">Chọn lại ảnh</button>
                   </div>
                 </div>
               </div>

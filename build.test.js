@@ -36,6 +36,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(html, /rel="icon"[^>]+teolaegi-pet-logo\.png/);
   assert.match(html, /class="brand-logo"[^>]+teolaegi-pet-logo\.png/);
   assert.match(html, /name="split-mode"/);
+  assert.match(html, /id="bill-image-input"[\s\S]*?multiple/);
+  assert.match(html, /id="bill-image-preview-list"/);
   assert.match(html, /Chia đều tổng thanh toán/);
   assert.match(html, /Theo món đã gọi/);
   assert.match(html, /styles\.css\?v=[a-f0-9]{12}/);
@@ -43,7 +45,10 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(app, /bill-calculator\.js\?v=[a-f0-9]{12}/);
   assert.match(app, /bill-ocr\.js\?v=[a-f0-9]{12}/);
   assert.match(app, /chia-bill-state-v2/);
-  assert.match(app, /scanBillImage\(file, requestId\)/);
+  assert.match(app, /scanBillImages\(files, requestId\)/);
+  assert.match(app, /selectBillImages\(event\.target\.files\)/);
+  assert.match(app, /selectBillImages\(event\.dataTransfer\.files\)/);
+  assert.doesNotMatch(app, /event\.(?:target|dataTransfer)\.files\[0\]/);
   assert.match(app, /applyOcrBill\(\{ scroll: false \}\)/);
   assert.match(app, /ocrRawText\.addEventListener\("input"/);
   assert.match(

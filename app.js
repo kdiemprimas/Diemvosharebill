@@ -2,11 +2,14 @@ import { calculateBill, calculateEqualSplit } from "./bill-calculator.js";
 import {
   buildStructuredOcrText,
   findTemporaryTotalRows,
+  mergeOcrPageTexts,
   parseBillText,
 } from "./bill-ocr.js";
 
 const STORAGE_KEY = "chia-bill-state-v2";
 const TESSERACT_MODULE_PATH = "./node_modules/tesseract.js/dist/tesseract.esm.min.js";
+const MAX_BILL_IMAGES = 10;
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const colors = ["#cc6f6d", "#df9668", "#79a8b7", "#9c788c", "#b6a06e", "#6f918e"];
 
 const defaultState = () => ({
@@ -39,8 +42,8 @@ function loadState() {
 
 let state = loadState();
 if (!["equal", "byItems"].includes(state.splitMode)) state.splitMode = "byItems";
-let selectedBillFile = null;
-let selectedBillUrl = "";
+let selectedBillFiles = [];
+let selectedBillUrls = [];
 let parsedOcrBill = null;
 let scanRequestId = 0;
 if (state.items[0] && !state.items[0].ownerId) state.items[0].ownerId = state.people[0]?.id || "all";
@@ -61,7 +64,7 @@ const elements = {
   imageInput: document.querySelector("#bill-image-input"),
   uploadDropzone: document.querySelector("#upload-dropzone"),
   uploadPreview: document.querySelector("#upload-preview"),
-  imagePreview: document.querySelector("#bill-image-preview"),
+  imagePreviewList: document.querySelector("#bill-image-preview-list"),
   fileName: document.querySelector("#bill-file-name"),
   fileSize: document.querySelector("#bill-file-size"),
   scanButton: document.querySelector("#scan-bill"),
@@ -127,40 +130,61 @@ function clearOcrResult() {
   elements.ocrRawText.value = "";
 }
 
-async function selectBillImage(file) {
-  const requestId = ++scanRequestId;
-  clearOcrResult();
-  if (!file) return;
-  if (!file.type.startsWith("image/")) {
+async function selectBillImages(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+  if (files.length > MAX_BILL_IMAGES) {
     setScanBusy(false);
-    elements.ocrError.textContent = "Vui lòng chọn file ảnh PNG, JPG hoặc WEBP.";
+    elements.ocrError.textContent = `Mỗi bill chọn tối đa ${MAX_BILL_IMAGES} ảnh. Hãy bớt ảnh rồi thử lại.`;
     return;
   }
-  if (file.size > 15 * 1024 * 1024) {
+  const invalidFile = files.find((file) => !file.type.startsWith("image/"));
+  if (invalidFile) {
     setScanBusy(false);
-    elements.ocrError.textContent = "Ảnh đang lớn hơn 15 MB. Hãy giảm kích thước ảnh rồi thử lại.";
+    elements.ocrError.textContent = "Vui lòng chỉ chọn ảnh PNG, JPG hoặc WEBP.";
+    return;
+  }
+  const oversizedFile = files.find((file) => file.size > MAX_IMAGE_BYTES);
+  if (oversizedFile) {
+    setScanBusy(false);
+    elements.ocrError.textContent = `Ảnh “${oversizedFile.name}” lớn hơn 15 MB. Hãy giảm kích thước rồi thử lại.`;
     return;
   }
 
-  selectedBillFile = file;
-  if (selectedBillUrl) URL.revokeObjectURL(selectedBillUrl);
-  selectedBillUrl = URL.createObjectURL(file);
-  elements.imagePreview.src = selectedBillUrl;
-  elements.fileName.textContent = file.name;
-  elements.fileSize.textContent = `${formatFileSize(file.size)} · Ảnh không được lưu lại`;
+  const requestId = ++scanRequestId;
+  clearOcrResult();
+  selectedBillUrls.forEach((url) => URL.revokeObjectURL(url));
+  selectedBillFiles = files;
+  selectedBillUrls = files.map((file) => URL.createObjectURL(file));
+  elements.imagePreviewList.innerHTML = "";
+  files.forEach((file, index) => {
+    const item = document.createElement("figure");
+    item.className = "upload-preview-item";
+    const image = document.createElement("img");
+    image.src = selectedBillUrls[index];
+    image.alt = `Ảnh ${index + 1}: ${file.name}`;
+    const caption = document.createElement("figcaption");
+    caption.textContent = `Ảnh ${index + 1}`;
+    item.append(image, caption);
+    elements.imagePreviewList.append(item);
+  });
+
+  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+  elements.fileName.textContent = files.length === 1 ? files[0].name : `${files.length} ảnh đã chọn`;
+  elements.fileSize.textContent = `${formatFileSize(totalSize)} · Đọc theo thứ tự ảnh · Không lưu ảnh`;
   elements.uploadDropzone.hidden = true;
   elements.uploadPreview.hidden = false;
-  await scanBillImage(file, requestId);
+  await scanBillImages(files, requestId);
 }
 
 function removeBillImage() {
   scanRequestId += 1;
+  selectedBillFiles = [];
+  selectedBillUrls.forEach((url) => URL.revokeObjectURL(url));
+  selectedBillUrls = [];
   setScanBusy(false);
-  selectedBillFile = null;
-  if (selectedBillUrl) URL.revokeObjectURL(selectedBillUrl);
-  selectedBillUrl = "";
   elements.imageInput.value = "";
-  elements.imagePreview.removeAttribute("src");
+  elements.imagePreviewList.innerHTML = "";
   elements.uploadPreview.hidden = true;
   elements.uploadDropzone.hidden = false;
   clearOcrResult();
@@ -174,16 +198,24 @@ const ocrStatusText = {
   "recognizing text": "Đang đọc tên, món và giá…",
 };
 
-function updateOcrProgress(message) {
+function updateOcrProgress(message, imageIndex = 0, imageCount = 1) {
   const progress = Math.max(0, Math.min(1, Number(message.progress) || 0));
-  elements.ocrProgressBar.style.width = `${Math.round(progress * 100)}%`;
-  elements.ocrProgressText.textContent = ocrStatusText[message.status] || "Đang xử lý ảnh bill…";
+  const overallProgress = (imageIndex + progress) / imageCount;
+  elements.ocrProgressBar.style.width = `${Math.round(overallProgress * 100)}%`;
+  const status = ocrStatusText[message.status] || "Đang xử lý ảnh bill…";
+  elements.ocrProgressText.textContent = imageCount > 1
+    ? `${status} · Ảnh ${imageIndex + 1}/${imageCount}`
+    : status;
 }
 
 function setScanBusy(isBusy) {
   elements.uploadPanel.setAttribute("aria-busy", String(isBusy));
   elements.scanButton.disabled = isBusy;
-  elements.scanButton.textContent = isBusy ? "Đang đọc bill…" : "Đọc lại ảnh bill";
+  elements.scanButton.textContent = isBusy
+    ? "Đang đọc bill…"
+    : selectedBillFiles.length > 1
+      ? `Đọc lại ${selectedBillFiles.length} ảnh bill`
+      : "Đọc lại ảnh bill";
 }
 
 async function prepareOcrImage(file) {
@@ -275,8 +307,9 @@ function parseApplyAndShowOcr(rawText) {
   if (parsedOcrBill.items.length) applyOcrBill({ scroll: false });
 }
 
-async function scanBillImage(file = selectedBillFile, requestId = ++scanRequestId) {
-  if (!file) return;
+async function scanBillImages(files = selectedBillFiles, requestId = ++scanRequestId) {
+  files = Array.from(files || []);
+  if (!files.length) return;
   elements.ocrError.textContent = "";
   elements.ocrResult.hidden = true;
   elements.ocrProgress.hidden = false;
@@ -285,6 +318,7 @@ async function scanBillImage(file = selectedBillFile, requestId = ++scanRequestI
   setScanBusy(true);
 
   let worker;
+  let currentImageIndex = 0;
   try {
     if (window.location.protocol === "file:") {
       throw new Error("OCR_REQUIRES_LOCALHOST");
@@ -297,34 +331,44 @@ async function scanBillImage(file = selectedBillFile, requestId = ++scanRequestI
       langPath: "./ocr-data",
       workerBlobURL: false,
       logger: (message) => {
-        if (requestId === scanRequestId) updateOcrProgress(message);
+        if (requestId === scanRequestId) {
+          updateOcrProgress(message, currentImageIndex, files.length);
+        }
       },
     });
-    const prepared = await prepareOcrImage(file);
-    await worker.setParameters({
-      tessedit_pageseg_mode: PSM.SPARSE_TEXT,
-      preserve_interword_spaces: "1",
-    });
-    const recognition = await worker.recognize(
-      prepared.image,
-      { rotateAuto: true },
-      { text: true, blocks: true },
-    );
-    const blocks = recognition.data.blocks || [];
-    const layoutWidth = prepared.width || Math.max(0, ...blocks.map((block) => block.bbox?.x1 || 0));
-    const layoutHeight = prepared.height || Math.max(0, ...blocks.map((block) => block.bbox?.y1 || 0));
-    const temporaryRows = findTemporaryTotalRows(blocks, layoutWidth);
-    const headerNames = await recognizeMissingHeaders(
-      worker,
-      prepared.image,
-      temporaryRows,
-      layoutWidth,
-      layoutHeight,
-      PSM,
-    );
-    const rawText = (blocks.length
-      ? buildStructuredOcrText(blocks, headerNames, layoutWidth)
-      : recognition.data.text).trim();
+    const pageTexts = [];
+    for (currentImageIndex = 0; currentImageIndex < files.length; currentImageIndex += 1) {
+      if (requestId !== scanRequestId) return;
+      elements.ocrProgressText.textContent = files.length > 1
+        ? `Đang chuẩn bị ảnh ${currentImageIndex + 1}/${files.length}…`
+        : "Đang chuẩn bị đọc ảnh…";
+      const prepared = await prepareOcrImage(files[currentImageIndex]);
+      await worker.setParameters({
+        tessedit_pageseg_mode: PSM.SPARSE_TEXT,
+        preserve_interword_spaces: "1",
+      });
+      const recognition = await worker.recognize(
+        prepared.image,
+        { rotateAuto: true },
+        { text: true, blocks: true },
+      );
+      const blocks = recognition.data.blocks || [];
+      const layoutWidth = prepared.width || Math.max(0, ...blocks.map((block) => block.bbox?.x1 || 0));
+      const layoutHeight = prepared.height || Math.max(0, ...blocks.map((block) => block.bbox?.y1 || 0));
+      const temporaryRows = findTemporaryTotalRows(blocks, layoutWidth);
+      const headerNames = await recognizeMissingHeaders(
+        worker,
+        prepared.image,
+        temporaryRows,
+        layoutWidth,
+        layoutHeight,
+        PSM,
+      );
+      pageTexts.push((blocks.length
+        ? buildStructuredOcrText(blocks, headerNames, layoutWidth)
+        : recognition.data.text).trim());
+    }
+    const rawText = mergeOcrPageTexts(pageTexts);
     if (requestId !== scanRequestId) return;
     elements.ocrRawText.value = rawText;
     parseApplyAndShowOcr(rawText);
@@ -650,7 +694,7 @@ document.querySelector("#add-item").addEventListener("click", () => {
 document.querySelector("#copy-result").addEventListener("click", copyResult);
 document.querySelector("#reset-bill").addEventListener("click", openResetDialog);
 document.querySelector("#confirm-reset-bill").addEventListener("click", resetBill);
-elements.imageInput.addEventListener("change", (event) => selectBillImage(event.target.files[0]));
+elements.imageInput.addEventListener("change", (event) => selectBillImages(event.target.files));
 elements.uploadDropzone.addEventListener("dragover", (event) => {
   event.preventDefault();
   elements.uploadDropzone.classList.add("is-dragging");
@@ -661,10 +705,10 @@ elements.uploadDropzone.addEventListener("dragleave", () => {
 elements.uploadDropzone.addEventListener("drop", (event) => {
   event.preventDefault();
   elements.uploadDropzone.classList.remove("is-dragging");
-  selectBillImage(event.dataTransfer.files[0]);
+  selectBillImages(event.dataTransfer.files);
 });
 document.querySelector("#remove-bill-image").addEventListener("click", removeBillImage);
-elements.scanButton.addEventListener("click", () => scanBillImage());
+elements.scanButton.addEventListener("click", () => scanBillImages());
 document.querySelector("#reparse-ocr").addEventListener("click", () => {
   parseApplyAndShowOcr(elements.ocrRawText.value);
 });

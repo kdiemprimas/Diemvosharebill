@@ -3,9 +3,29 @@ import assert from "node:assert/strict";
 import {
   buildStructuredOcrText,
   findTemporaryTotalRows,
+  mergeOcrPageTexts,
   parseAmount,
   parseBillText,
 } from "./bill-ocr.js";
+
+test("ghép nội dung nhiều ảnh theo thứ tự và bỏ phần giao nhau bị lặp", () => {
+  const merged = mergeOcrPageTexts([
+    "Bạn: 1 món\n1x Matcha Cloudy L\n53.000đ",
+    "1x Matcha Cloudy L\n53.000đ\nThoa: 1 món\n1x Matcha Cloudy M\n43.000đ",
+  ]);
+
+  assert.equal(
+    merged,
+    "Bạn: 1 món\n1x Matcha Cloudy L\n53.000đ\nThoa: 1 món\n1x Matcha Cloudy M\n43.000đ",
+  );
+});
+
+test("bỏ trang OCR trống nhưng vẫn giữ thứ tự các trang còn lại", () => {
+  assert.equal(
+    mergeOcrPageTexts(["Ảnh đầu", "  ", "Ảnh cuối"]),
+    "Ảnh đầu\nẢnh cuối",
+  );
+});
 
 test("đọc các kiểu định dạng tiền Việt Nam phổ biến", () => {
   assert.equal(parseAmount("45.000đ"), 45000);
