@@ -38,6 +38,9 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(html, /name="split-mode"/);
   assert.match(html, /id="bill-image-input"[\s\S]*?multiple/);
   assert.match(html, /id="bill-image-preview-list"/);
+  assert.match(html, /id="confirm-split"/);
+  assert.match(html, /id="summary-review-pending"/);
+  assert.match(html, /id="confirmed-summary"[^>]+hidden/);
   assert.match(html, /Chia đều tổng thanh toán/);
   assert.match(html, /Theo món đã gọi/);
   assert.match(html, /styles\.css\?v=[a-f0-9]{12}/);
@@ -51,6 +54,19 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.doesNotMatch(app, /event\.(?:target|dataTransfer)\.files\[0\]/);
   assert.match(app, /applyOcrBill\(\{ scroll: false \}\)/);
   assert.match(app, /ocrRawText\.addEventListener\("input"/);
+  assert.match(app, /let isSplitConfirmed = false/);
+  assert.match(
+    app,
+    /function updateStateAndSummary\(\)[\s\S]*?invalidateSplitConfirmation\(\);[\s\S]*?renderSummary\(\)/,
+  );
+  assert.match(
+    app,
+    /confirmedSummary\.hidden = !isSplitConfirmed/,
+  );
+  assert.match(
+    app,
+    /confirmSplitButton\.addEventListener\("click", confirmSplit\)/,
+  );
   assert.match(
     app,
     /function resetBill\(\)[\s\S]*?removeBillImage\(\);[\s\S]*?uploadPanel\.scrollIntoView/,

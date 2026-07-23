@@ -46,6 +46,8 @@ let selectedBillFiles = [];
 let selectedBillUrls = [];
 let parsedOcrBill = null;
 let scanRequestId = 0;
+let isSplitConfirmed = false;
+let splitChangedAfterConfirmation = false;
 if (state.items[0] && !state.items[0].ownerId) state.items[0].ownerId = state.people[0]?.id || "all";
 
 const elements = {
@@ -78,6 +80,10 @@ const elements = {
   ocrError: document.querySelector("#ocr-error"),
   uploadPanel: document.querySelector(".upload-panel"),
   splitModeInputs: document.querySelectorAll('input[name="split-mode"]'),
+  confirmSplitButton: document.querySelector("#confirm-split"),
+  confirmedSummary: document.querySelector("#confirmed-summary"),
+  reviewPending: document.querySelector("#summary-review-pending"),
+  reviewMessage: document.querySelector("#summary-review-message"),
   resetDialog: document.querySelector("#reset-confirm-dialog"),
 };
 
@@ -96,7 +102,13 @@ function setDirty() {
   setDirty.timer = window.setTimeout(persist, 250);
 }
 
+function invalidateSplitConfirmation() {
+  if (isSplitConfirmed) splitChangedAfterConfirmation = true;
+  isSplitConfirmed = false;
+}
+
 function updateStateAndSummary() {
+  invalidateSplitConfirmation();
   setDirty();
   renderSummary();
 }
@@ -152,6 +164,8 @@ async function selectBillImages(fileList) {
   }
 
   const requestId = ++scanRequestId;
+  invalidateSplitConfirmation();
+  renderSummary();
   clearOcrResult();
   selectedBillUrls.forEach((url) => URL.revokeObjectURL(url));
   selectedBillFiles = files;
@@ -509,6 +523,13 @@ function getCalculatedBill() {
 function renderSummary() {
   const bill = getCalculatedBill();
   const isEqualSplit = state.splitMode === "equal";
+  elements.confirmedSummary.hidden = !isSplitConfirmed;
+  elements.reviewPending.hidden = isSplitConfirmed;
+  if (!isSplitConfirmed) {
+    elements.reviewMessage.textContent = splitChangedAfterConfirmation
+      ? "Nội dung bill vừa thay đổi. Hãy kiểm tra lại rồi xác nhận để cập nhật kết quả."
+      : "Hãy xem lại đầy đủ các bước, sau đó bấm “Xác nhận và xem kết quả chia bill”.";
+  }
   document.querySelector("#summary-name").textContent = state.billName.trim() || "Bill mới";
   document.querySelector("#summary-platform").textContent = state.platform.toUpperCase();
   const summaryDate = document.querySelector("#summary-date");
@@ -608,7 +629,7 @@ function getShareText() {
 
 async function copyResult() {
   const button = document.querySelector("#copy-result");
-  if (!state.people.length) return;
+  if (!isSplitConfirmed || !state.people.length) return;
   try {
     await navigator.clipboard.writeText(getShareText());
     button.textContent = "Đã sao chép ✓";
@@ -616,6 +637,22 @@ async function copyResult() {
     button.textContent = "Không thể sao chép";
   }
   window.setTimeout(() => (button.textContent = "Sao chép kết quả"), 1600);
+}
+
+function confirmSplit() {
+  if (!state.people.length) {
+    elements.reviewMessage.textContent = "Hãy thêm ít nhất một người tham gia trước khi chia bill.";
+    return;
+  }
+  if (!state.items.length) {
+    elements.reviewMessage.textContent = "Hãy thêm ít nhất một món ăn trước khi chia bill.";
+    return;
+  }
+
+  isSplitConfirmed = true;
+  splitChangedAfterConfirmation = false;
+  renderSummary();
+  document.querySelector(".summary-card").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function openResetDialog() {
@@ -638,6 +675,8 @@ function resetBill() {
   closeResetDialog();
   removeBillImage();
   state = defaultState();
+  isSplitConfirmed = false;
+  splitChangedAfterConfirmation = false;
   state.items[0].ownerId = state.people[0].id;
   renderAll();
   persist();
@@ -645,6 +684,7 @@ function resetBill() {
 }
 
 function renderAll() {
+  invalidateSplitConfirmation();
   elements.billName.value = state.billName;
   elements.platform.value = state.platform;
   elements.orderDate.value = state.orderDate || "";
@@ -692,6 +732,7 @@ document.querySelector("#add-item").addEventListener("click", () => {
   elements.itemsList.lastElementChild?.querySelector(".item-name")?.focus();
 });
 document.querySelector("#copy-result").addEventListener("click", copyResult);
+elements.confirmSplitButton.addEventListener("click", confirmSplit);
 document.querySelector("#reset-bill").addEventListener("click", openResetDialog);
 document.querySelector("#confirm-reset-bill").addEventListener("click", resetBill);
 elements.imageInput.addEventListener("change", (event) => selectBillImages(event.target.files));

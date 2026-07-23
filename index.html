@@ -235,6 +235,19 @@
               </div>
               <p class="hint">Các khoản phí và tổng giảm giá được chia đều cho tất cả người tham gia.</p>
             </article>
+
+            <article class="panel confirm-split-panel">
+              <div class="confirm-split-copy">
+                <span class="step">07</span>
+                <div>
+                  <h2>Sẵn sàng chia bill?</h2>
+                  <p>Kiểm tra lại người tham gia, món đã gọi, cách chia và các khoản phí trước khi xem kết quả.</p>
+                </div>
+              </div>
+              <button class="confirm-split-button" id="confirm-split" type="button">
+                Xác nhận và xem kết quả chia bill
+              </button>
+            </article>
           </div>
 
           <aside class="summary-card">
@@ -242,24 +255,39 @@
               <p>Kết quả chia bill</p>
               <span id="summary-platform">GRABFOOD</span>
             </div>
-            <h2 id="summary-name">Bill mới</h2>
-            <p class="summary-date" id="summary-date" hidden></p>
-            <p class="summary-split-mode" id="summary-split-mode"></p>
-            <div class="summary-rule"></div>
-            <div class="person-results" id="person-results"></div>
-            <div class="empty-results" id="empty-results">
-              Thêm người và món ăn để xem kết quả.
+            <div class="summary-review-pending" id="summary-review-pending">
+              <img
+                src="./assets/teolaegi-pet-logo.png"
+                width="82"
+                height="88"
+                alt=""
+                aria-hidden="true"
+              />
+              <strong>Chưa hiển thị kết quả</strong>
+              <p id="summary-review-message">
+                Hãy xem lại đầy đủ các bước, sau đó bấm “Xác nhận và xem kết quả chia bill”.
+              </p>
             </div>
-            <div class="summary-rule"></div>
-            <dl class="totals">
-              <div><dt>Tiền món</dt><dd id="subtotal">0 ₫</dd></div>
-              <div><dt>Phí giao hàng</dt><dd id="summary-shipping">0 ₫</dd></div>
-              <div><dt>Phụ thu / phí khác</dt><dd id="summary-surcharge">0 ₫</dd></div>
-              <div class="discount-row"><dt>Tổng giảm giá</dt><dd id="summary-discount">− 0 ₫</dd></div>
-              <div class="grand-total"><dt>Tổng phải trả</dt><dd id="grand-total">0 ₫</dd></div>
-            </dl>
-            <p class="validation-message" id="validation-message" role="alert"></p>
-            <button class="copy-button" id="copy-result" type="button">Sao chép kết quả</button>
+            <div id="confirmed-summary" hidden>
+              <h2 id="summary-name">Bill mới</h2>
+              <p class="summary-date" id="summary-date" hidden></p>
+              <p class="summary-split-mode" id="summary-split-mode"></p>
+              <div class="summary-rule"></div>
+              <div class="person-results" id="person-results"></div>
+              <div class="empty-results" id="empty-results">
+                Thêm người và món ăn để xem kết quả.
+              </div>
+              <div class="summary-rule"></div>
+              <dl class="totals">
+                <div><dt>Tiền món</dt><dd id="subtotal">0 ₫</dd></div>
+                <div><dt>Phí giao hàng</dt><dd id="summary-shipping">0 ₫</dd></div>
+                <div><dt>Phụ thu / phí khác</dt><dd id="summary-surcharge">0 ₫</dd></div>
+                <div class="discount-row"><dt>Tổng giảm giá</dt><dd id="summary-discount">− 0 ₫</dd></div>
+                <div class="grand-total"><dt>Tổng phải trả</dt><dd id="grand-total">0 ₫</dd></div>
+              </dl>
+              <p class="validation-message" id="validation-message" role="alert"></p>
+              <button class="copy-button" id="copy-result" type="button">Sao chép kết quả</button>
+            </div>
             <button class="reset-button" id="reset-bill" type="button">Tạo bill mới</button>
           </aside>
         </section>
