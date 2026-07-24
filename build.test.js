@@ -41,6 +41,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(html, /rel="icon"[^>]+teolaegi-pet-logo\.png/);
   assert.match(html, /class="brand-logo"[^>]+teolaegi-pet-logo\.png/);
   assert.match(html, /class="melo-stage"[^>]+aria-hidden="true"/);
+  assert.match(html, /class="melo-performer"/);
   assert.match(html, /class="melo-sprite"/);
   assert.match(html, /class="hero-pet-scene"[^>]+aria-hidden="true"/);
   assert.match(html, /class="hero-pet hero-pet-teolaegi"/);
@@ -69,12 +70,20 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /history\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /bill-history\.js\?v=[a-f0-9]{12}/);
   const css = await readFile(join(outputDir, "styles.css"), "utf8");
-  assert.match(css, /@keyframes melo-walk-across/);
-  assert.match(css, /@keyframes melo-walk-frames/);
+  assert.match(css, /@keyframes melo-sing-across/);
+  assert.match(css, /@keyframes melo-sing-frames/);
+  assert.match(
+    css,
+    /\.melo-sprite img\s*\{[^}]*top:\s*-800%[^}]*animation:\s*melo-sing-frames\s+\d+ms\s+steps\(6,\s*end\)/,
+  );
   assert.match(css, /@keyframes hero-pet-idle/);
   assert.match(css, /\.hero-idle-sprite/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
-  assert.match(css, /\.melo-walker[\s\S]*?pointer-events:\s*none/);
+  assert.match(css, /\.melo-performer[\s\S]*?pointer-events:\s*none/);
+  assert.match(
+    css,
+    /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.melo-sprite img\s*\{[^}]*top:\s*-800%[^}]*animation:\s*none/,
+  );
   assert.match(app, /chia-bill-state-v2/);
   assert.match(app, /scanBillImages\(files, requestId\)/);
   assert.match(app, /selectBillImages\(event\.target\.files\)/);
