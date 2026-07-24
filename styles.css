@@ -87,13 +87,52 @@ h1 span { color: var(--accent); }
 .hero-pet { position: absolute; z-index: 2; bottom: 12px; filter: drop-shadow(0 13px 10px rgba(77, 58, 60, 0.2)); }
 .hero-pet-teolaegi { left: 14px; width: 150px; height: 162px; rotate: -3deg; }
 .hero-pet-melo { right: 13px; width: 144px; height: 156px; rotate: 3deg; }
-.hero-idle-sprite { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; }
-.hero-idle-sprite img { position: absolute; top: 0; left: 0; width: 800%; max-width: none; height: 1100%; animation: hero-pet-idle 1400ms steps(7, end) infinite; will-change: transform; }
-.hero-pet-melo .hero-idle-sprite img { animation-delay: -520ms; animation-duration: 1540ms; }
+.hero-action-sprite { position: absolute; inset: 0; display: block; overflow: hidden; opacity: 0; will-change: opacity; }
+.hero-action-sprite img { position: absolute; left: 0; width: 800%; max-width: none; height: 1100%; animation: hero-pet-action-frames 1260ms steps(6, end) infinite; will-change: transform; }
+.hero-action-teolaegi-waiting { animation: hero-show-teolaegi-waiting 15s linear infinite; }
+.hero-action-teolaegi-running { animation: hero-show-teolaegi-running 15s linear infinite; }
+.hero-action-teolaegi-review { animation: hero-show-teolaegi-review 15s linear infinite; }
+.hero-action-melo-running { animation: hero-show-melo-running 15s linear infinite; }
+.hero-action-melo-review { animation: hero-show-melo-review 15s linear infinite; }
+.hero-action-teolaegi-waiting img { top: -600%; }
+.hero-action-teolaegi-running img { top: -700%; }
+.hero-action-teolaegi-review img { top: -800%; }
+.hero-action-melo-running img { top: -700%; animation-delay: -360ms; }
+.hero-action-melo-review img { top: -800%; animation-delay: -720ms; }
 
-@keyframes hero-pet-idle {
+@keyframes hero-pet-action-frames {
   from { transform: translateX(0); }
-  to { transform: translateX(-87.5%); }
+  to { transform: translateX(-75%); }
+}
+
+@keyframes hero-show-teolaegi-waiting {
+  0%, 30% { opacity: 1; }
+  33%, 97% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes hero-show-teolaegi-running {
+  0%, 30% { opacity: 0; }
+  33%, 63% { opacity: 1; }
+  66%, 100% { opacity: 0; }
+}
+
+@keyframes hero-show-teolaegi-review {
+  0%, 63% { opacity: 0; }
+  66%, 97% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes hero-show-melo-running {
+  0%, 46% { opacity: 1; }
+  51%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes hero-show-melo-review {
+  0%, 46% { opacity: 0; }
+  51%, 95% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 25px; align-items: start; }
@@ -405,6 +444,8 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 @media (prefers-reduced-motion: reduce) {
   .melo-performer { right: 14px; left: auto; opacity: 0.76; animation: none; }
   .melo-sprite img { top: -800%; transform: none; animation: none; }
-  .hero-idle-sprite img { transform: none; animation: none; }
+  .hero-action-sprite, .hero-action-sprite img { transform: none; animation: none; }
+  .hero-action-sprite { opacity: 0; }
+  .hero-action-teolaegi-review, .hero-action-melo-review { opacity: 1; }
   .confirm-dialog[open], .confirm-dialog[open]::backdrop { animation: none; }
 }

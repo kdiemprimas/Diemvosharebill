@@ -46,6 +46,11 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(html, /class="hero-pet-scene"[^>]+aria-hidden="true"/);
   assert.match(html, /class="hero-pet hero-pet-teolaegi"/);
   assert.match(html, /class="hero-pet hero-pet-melo"/);
+  assert.match(html, /class="hero-action-sprite hero-action-teolaegi-waiting"/);
+  assert.match(html, /class="hero-action-sprite hero-action-teolaegi-running"/);
+  assert.match(html, /class="hero-action-sprite hero-action-teolaegi-review"/);
+  assert.match(html, /class="hero-action-sprite hero-action-melo-running"/);
+  assert.match(html, /class="hero-action-sprite hero-action-melo-review"/);
   assert.match(html, /href="\.\/history\.html"/);
   assert.match(html, /teolaegi-spritesheet\.webp\?v=[a-f0-9]{12}/);
   assert.match(html, /melo-spritesheet\.webp\?v=[a-f0-9]{12}/);
@@ -76,8 +81,17 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
     css,
     /\.melo-sprite img\s*\{[^}]*top:\s*-800%[^}]*animation:\s*melo-sing-frames\s+\d+ms\s+steps\(6,\s*end\)/,
   );
-  assert.match(css, /@keyframes hero-pet-idle/);
-  assert.match(css, /\.hero-idle-sprite/);
+  assert.match(css, /@keyframes hero-pet-action-frames/);
+  assert.match(css, /@keyframes hero-show-teolaegi-waiting/);
+  assert.match(css, /@keyframes hero-show-teolaegi-running/);
+  assert.match(css, /@keyframes hero-show-teolaegi-review/);
+  assert.match(css, /@keyframes hero-show-melo-running/);
+  assert.match(css, /@keyframes hero-show-melo-review/);
+  assert.match(css, /\.hero-action-teolaegi-waiting img\s*\{[^}]*top:\s*-600%/);
+  assert.match(css, /\.hero-action-teolaegi-running img\s*\{[^}]*top:\s*-700%/);
+  assert.match(css, /\.hero-action-teolaegi-review img\s*\{[^}]*top:\s*-800%/);
+  assert.match(css, /\.hero-action-melo-running img\s*\{[^}]*top:\s*-700%/);
+  assert.match(css, /\.hero-action-melo-review img\s*\{[^}]*top:\s*-800%/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /\.melo-performer[\s\S]*?pointer-events:\s*none/);
   assert.match(
