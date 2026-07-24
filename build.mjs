@@ -16,6 +16,7 @@ const publicFiles = [
 ];
 const imageAssets = [
   "assets/teolaegi-pet-logo.png",
+  "assets/teolaegi-spritesheet.webp",
   "assets/melo-spritesheet.webp",
 ];
 
@@ -46,6 +47,10 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
     .replaceAll(
       "./assets/teolaegi-pet-logo.png",
       `./assets/teolaegi-pet-logo.png?v=${assetVersion}`,
+    )
+    .replaceAll(
+      "./assets/teolaegi-spritesheet.webp",
+      `./assets/teolaegi-spritesheet.webp?v=${assetVersion}`,
     )
     .replaceAll(
       "./assets/melo-spritesheet.webp",

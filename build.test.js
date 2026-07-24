@@ -21,6 +21,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
     "bill-ocr.js",
     "bill-history.js",
     "assets/teolaegi-pet-logo.png",
+    "assets/teolaegi-spritesheet.webp",
     "assets/melo-spritesheet.webp",
     ".nojekyll",
     "node_modules/tesseract.js/dist/tesseract.esm.min.js",
@@ -41,7 +42,11 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(html, /class="brand-logo"[^>]+teolaegi-pet-logo\.png/);
   assert.match(html, /class="melo-stage"[^>]+aria-hidden="true"/);
   assert.match(html, /class="melo-sprite"/);
+  assert.match(html, /class="hero-pet-scene"[^>]+aria-hidden="true"/);
+  assert.match(html, /class="hero-pet hero-pet-teolaegi"/);
+  assert.match(html, /class="hero-pet hero-pet-melo"/);
   assert.match(html, /href="\.\/history\.html"/);
+  assert.match(html, /teolaegi-spritesheet\.webp\?v=[a-f0-9]{12}/);
   assert.match(html, /melo-spritesheet\.webp\?v=[a-f0-9]{12}/);
   assert.match(html, /name="split-mode"/);
   assert.match(html, /id="bill-image-input"[\s\S]*?multiple/);
@@ -66,6 +71,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   const css = await readFile(join(outputDir, "styles.css"), "utf8");
   assert.match(css, /@keyframes melo-walk-across/);
   assert.match(css, /@keyframes melo-walk-frames/);
+  assert.match(css, /@keyframes hero-pet-idle/);
+  assert.match(css, /\.hero-idle-sprite/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /\.melo-walker[\s\S]*?pointer-events:\s*none/);
   assert.match(app, /chia-bill-state-v2/);
