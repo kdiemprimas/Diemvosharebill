@@ -73,6 +73,10 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /id="history-list"/);
   assert.match(historyHtml, /id="history-empty"/);
   assert.match(historyHtml, /class="melo-performer"/);
+  assert.match(
+    historyHtml,
+    /<h1 class="history-title"><span class="history-title-main">L\u1ecbch s\u1eed<\/span><span class="history-title-accent">chia bill\.<\/span><\/h1>/,
+  );
   assert.match(historyHtml, /class="history-pet-scene"/);
   assert.match(historyHtml, /class="history-pet history-pet-teolaegi"/);
   assert.match(historyHtml, /class="history-pet history-pet-melo"/);
@@ -102,6 +106,10 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(css, /\.hero-action-melo-running img\s*\{[^}]*top:\s*-700%/);
   assert.match(css, /\.hero-action-melo-review img\s*\{[^}]*top:\s*-800%/);
   assert.match(css, /\.history-pet-scene/);
+  assert.match(css, /\.history-title\s*\{[^}]*display:\s*flex[^}]*white-space:\s*nowrap/);
+  assert.match(css, /\.history-title-accent\s*\{/);
+  assert.match(css, /\.history-title-accent::after\s*\{[^}]*content:\s*""/);
+  assert.match(css, /--orange:\s*#[a-f0-9]{6}/i);
   assert.match(css, /\.history-pet-backdrop/);
   assert.match(css, /\.history-pet-teolaegi/);
   assert.match(css, /\.history-pet-melo/);
