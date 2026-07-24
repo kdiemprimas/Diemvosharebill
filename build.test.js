@@ -72,6 +72,15 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /<title>Lịch sử chia bill · Ai Ăn Nấy Trả<\/title>/);
   assert.match(historyHtml, /id="history-list"/);
   assert.match(historyHtml, /id="history-empty"/);
+  assert.match(historyHtml, /class="melo-performer"/);
+  assert.match(historyHtml, /class="history-pet-scene"/);
+  assert.match(historyHtml, /class="history-pet history-pet-teolaegi"/);
+  assert.match(historyHtml, /class="history-pet history-pet-melo"/);
+  assert.match(historyHtml, /class="hero-action-sprite hero-action-teolaegi-waiting"/);
+  assert.match(historyHtml, /class="hero-action-sprite hero-action-teolaegi-running"/);
+  assert.match(historyHtml, /class="hero-action-sprite hero-action-teolaegi-review"/);
+  assert.match(historyHtml, /class="hero-action-sprite hero-action-melo-running"/);
+  assert.match(historyHtml, /class="hero-action-sprite hero-action-melo-review"/);
   assert.match(historyHtml, /history\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /bill-history\.js\?v=[a-f0-9]{12}/);
   const css = await readFile(join(outputDir, "styles.css"), "utf8");
@@ -92,6 +101,10 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(css, /\.hero-action-teolaegi-review img\s*\{[^}]*top:\s*-800%/);
   assert.match(css, /\.hero-action-melo-running img\s*\{[^}]*top:\s*-700%/);
   assert.match(css, /\.hero-action-melo-review img\s*\{[^}]*top:\s*-800%/);
+  assert.match(css, /\.history-pet-scene/);
+  assert.match(css, /\.history-pet-backdrop/);
+  assert.match(css, /\.history-pet-teolaegi/);
+  assert.match(css, /\.history-pet-melo/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /\.melo-performer[\s\S]*?pointer-events:\s*none/);
   assert.match(

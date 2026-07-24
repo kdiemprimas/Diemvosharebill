@@ -21,7 +21,7 @@
   </head>
   <body>
     <div class="melo-stage" aria-hidden="true">
-      <div class="melo-walker">
+      <div class="melo-performer">
         <span class="melo-sprite">
           <img src="./assets/melo-spritesheet.webp" alt="" />
         </span>
@@ -59,9 +59,31 @@
               Mỗi bill được lưu sau khi bạn xác nhận chia. Dữ liệu chỉ nằm trên thiết bị này.
             </p>
           </div>
-          <div class="history-count-card" aria-live="polite">
-            <strong id="history-count">0</strong>
-            <span>bill đã lưu</span>
+          <div class="history-pet-scene">
+            <div class="history-pet-backdrop" aria-hidden="true"></div>
+            <div class="history-count-card" aria-live="polite">
+              <strong id="history-count">0</strong>
+              <span>bill đã lưu</span>
+            </div>
+            <div class="history-pet history-pet-teolaegi" aria-hidden="true">
+              <span class="hero-action-sprite hero-action-teolaegi-waiting">
+                <img src="./assets/teolaegi-spritesheet.webp" alt="" />
+              </span>
+              <span class="hero-action-sprite hero-action-teolaegi-running">
+                <img src="./assets/teolaegi-spritesheet.webp" alt="" />
+              </span>
+              <span class="hero-action-sprite hero-action-teolaegi-review">
+                <img src="./assets/teolaegi-spritesheet.webp" alt="" />
+              </span>
+            </div>
+            <div class="history-pet history-pet-melo" aria-hidden="true">
+              <span class="hero-action-sprite hero-action-melo-running">
+                <img src="./assets/melo-spritesheet.webp" alt="" />
+              </span>
+              <span class="hero-action-sprite hero-action-melo-review">
+                <img src="./assets/melo-spritesheet.webp" alt="" />
+              </span>
+            </div>
           </div>
         </section>
 
