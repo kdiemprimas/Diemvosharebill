@@ -42,7 +42,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(html, /class="brand-logo"[^>]+teolaegi-pet-logo\.png/);
   assert.match(html, /class="melo-stage"[^>]+aria-hidden="true"/);
   assert.match(html, /class="melo-performer"/);
-  assert.match(html, /class="melo-sprite"/);
+  assert.match(html, /class="melo-sprite melo-sprite-running"/);
+  assert.match(html, /class="melo-sprite melo-sprite-singing"/);
   assert.match(html, /class="hero-pet-scene"[^>]+aria-hidden="true"/);
   assert.match(html, /class="hero-pet hero-pet-teolaegi"/);
   assert.match(html, /class="hero-pet hero-pet-melo"/);
@@ -73,6 +74,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /id="history-list"/);
   assert.match(historyHtml, /id="history-empty"/);
   assert.match(historyHtml, /class="melo-performer"/);
+  assert.match(historyHtml, /class="melo-sprite melo-sprite-running"/);
+  assert.match(historyHtml, /class="melo-sprite melo-sprite-singing"/);
   assert.match(
     historyHtml,
     /<h1 class="history-title"><span class="history-title-main">L\u1ecbch s\u1eed<\/span><span class="history-title-accent">chia bill\.<\/span><\/h1>/,
@@ -90,9 +93,16 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   const css = await readFile(join(outputDir, "styles.css"), "utf8");
   assert.match(css, /@keyframes melo-sing-across/);
   assert.match(css, /@keyframes melo-sing-frames/);
+  assert.match(css, /@keyframes melo-run-frames/);
+  assert.match(css, /@keyframes melo-show-running/);
+  assert.match(css, /@keyframes melo-show-singing/);
   assert.match(
     css,
-    /\.melo-sprite img\s*\{[^}]*top:\s*-800%[^}]*animation:\s*melo-sing-frames\s+\d+ms\s+steps\(6,\s*end\)/,
+    /\.melo-sprite-singing img\s*\{[^}]*top:\s*-800%[^}]*animation:\s*melo-sing-frames\s+\d+ms\s+steps\(6,\s*end\)/,
+  );
+  assert.match(
+    css,
+    /\.melo-sprite-running img\s*\{[^}]*top:\s*-100%[^}]*animation:\s*melo-run-frames\s+\d+ms\s+steps\(8,\s*end\)/,
   );
   assert.match(css, /@keyframes hero-pet-action-frames/);
   assert.match(css, /@keyframes hero-show-teolaegi-waiting/);
@@ -117,7 +127,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(css, /\.melo-performer[\s\S]*?pointer-events:\s*none/);
   assert.match(
     css,
-    /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.melo-sprite img\s*\{[^}]*top:\s*-800%[^}]*animation:\s*none/,
+    /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.melo-sprite-running\s*\{[^}]*opacity:\s*0[^}]*animation:\s*none[\s\S]*?\.melo-sprite-singing\s*\{[^}]*opacity:\s*1[^}]*animation:\s*none/,
   );
   assert.match(app, /chia-bill-state-v2/);
   assert.match(app, /scanBillImages\(files, requestId\)/);

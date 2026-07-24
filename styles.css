@@ -31,12 +31,33 @@ body {
 
 .melo-stage { position: fixed; z-index: 20; inset: 0; overflow: hidden; pointer-events: none; }
 .melo-performer { position: absolute; left: -112px; bottom: 5px; width: 88px; height: 96px; pointer-events: none; animation: melo-sing-across 20s linear infinite; filter: drop-shadow(0 9px 8px rgba(88, 45, 91, 0.2)); will-change: transform; }
-.melo-sprite { position: relative; display: block; width: 88px; height: 96px; overflow: hidden; }
-.melo-sprite img { position: absolute; top: -800%; left: 0; width: 800%; max-width: none; height: 1100%; animation: melo-sing-frames 1080ms steps(6, end) infinite; will-change: transform; }
+.melo-sprite { position: absolute; inset: 0; display: block; width: 88px; height: 96px; overflow: hidden; will-change: opacity; }
+.melo-sprite img { position: absolute; left: 0; width: 800%; max-width: none; height: 1100%; will-change: transform; }
+.melo-sprite-running { opacity: 1; animation: melo-show-running 8s linear infinite; }
+.melo-sprite-running img { top: -100%; animation: melo-run-frames 1040ms steps(8, end) infinite; }
+.melo-sprite-singing { opacity: 0; animation: melo-show-singing 8s linear infinite; }
+.melo-sprite-singing img { top: -800%; animation: melo-sing-frames 1080ms steps(6, end) infinite; }
+
+@keyframes melo-run-frames {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
 
 @keyframes melo-sing-frames {
   from { transform: translateX(0); }
   to { transform: translateX(-75%); }
+}
+
+@keyframes melo-show-running {
+  0%, 44% { opacity: 1; }
+  50%, 94% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes melo-show-singing {
+  0%, 44% { opacity: 0; }
+  50%, 94% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 @keyframes melo-sing-across {
@@ -478,7 +499,9 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 
 @media (prefers-reduced-motion: reduce) {
   .melo-performer { right: 14px; left: auto; opacity: 0.76; animation: none; }
-  .melo-sprite img { top: -800%; transform: none; animation: none; }
+  .melo-sprite-running { opacity: 0; animation: none; }
+  .melo-sprite-singing { opacity: 1; animation: none; }
+  .melo-sprite img { transform: none; animation: none; }
   .hero-action-sprite, .hero-action-sprite img { transform: none; animation: none; }
   .history-title-accent::after { animation: none; }
   .hero-action-sprite { opacity: 0; }
