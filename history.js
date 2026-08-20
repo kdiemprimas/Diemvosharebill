@@ -10,6 +10,7 @@ import {
 import {
   DEBT_STORAGE_KEY,
   clearDebtEntries as clearStoredDebtEntries,
+  createManualDebtEntry,
   filterDebtEntriesByYear,
   getDebtOverview,
   getDebtSummary,
@@ -18,6 +19,7 @@ import {
   readDebtEntries,
   removeDebtEntry,
   updateDebtStatus,
+  upsertDebtEntries,
 } from "./debt-ledger.js";
 
 const money = new Intl.NumberFormat("vi-VN");
@@ -51,6 +53,19 @@ const elements = {
   debtPagePrev: document.querySelector("#debt-page-prev"),
   debtPageStatus: document.querySelector("#debt-page-status"),
   debtPageNext: document.querySelector("#debt-page-next"),
+  openManualDebt: document.querySelector("#open-manual-debt"),
+  openManualDebtEmpty: document.querySelector("#open-manual-debt-empty"),
+  manualDebtDialog: document.querySelector("#manual-debt-dialog"),
+  manualDebtForm: document.querySelector("#manual-debt-form"),
+  manualDebtCreditor: document.querySelector("#manual-debt-creditor"),
+  manualDebtDebtor: document.querySelector("#manual-debt-debtor"),
+  manualDebtAmount: document.querySelector("#manual-debt-amount"),
+  manualDebtDate: document.querySelector("#manual-debt-date"),
+  manualDebtNote: document.querySelector("#manual-debt-note"),
+  manualDebtStatus: document.querySelector("#manual-debt-status"),
+  manualDebtPersonOptions: document.querySelector("#manual-debt-person-options"),
+  manualDebtError: document.querySelector("#manual-debt-error"),
+  cancelManualDebt: document.querySelector("#cancel-manual-debt"),
   historyDateFrom: document.querySelector("#history-date-from"),
   historyDateTo: document.querySelector("#history-date-to"),
   historyDateClear: document.querySelector("#history-date-clear"),
@@ -96,6 +111,115 @@ function formatDebtDate(date) {
   return year && month && day ? `${day}/${month}/${year}` : date;
 }
 
+function getTodayDateKey() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60 * 1000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function getManualDebtPeople() {
+  const names = new Map();
+  const addName = (value) => {
+    const name = String(value || "").trim().replace(/\s+/g, " ");
+    const key = normalizeName(name);
+    if (key && !names.has(key)) names.set(key, name);
+  };
+  debtEntries.forEach(({ creditor, debtor }) => {
+    addName(creditor);
+    addName(debtor);
+  });
+  records.forEach(({ people }) => people.forEach(({ name }) => addName(name)));
+  return [...names.values()].sort((left, right) => left.localeCompare(right, "vi"));
+}
+
+function clearManualDebtErrors() {
+  elements.manualDebtError.textContent = "";
+  [
+    elements.manualDebtCreditor,
+    elements.manualDebtDebtor,
+    elements.manualDebtAmount,
+    elements.manualDebtDate,
+  ].forEach((input) => input.removeAttribute("aria-invalid"));
+}
+
+function showManualDebtError(message, input) {
+  elements.manualDebtError.textContent = message;
+  input?.setAttribute("aria-invalid", "true");
+  input?.focus();
+}
+
+function openManualDebtDialog() {
+  elements.manualDebtForm.reset();
+  elements.manualDebtDate.value = getTodayDateKey();
+  elements.manualDebtStatus.value = "unpaid";
+  elements.manualDebtPersonOptions.innerHTML = getManualDebtPeople()
+    .map((name) => `<option value="${escapeHtml(name)}"></option>`)
+    .join("");
+  clearManualDebtErrors();
+  if (typeof elements.manualDebtDialog.showModal === "function") {
+    elements.manualDebtDialog.showModal();
+  } else {
+    elements.manualDebtDialog.setAttribute("open", "");
+  }
+  window.setTimeout(() => elements.manualDebtCreditor.focus(), 0);
+}
+
+function closeManualDebtDialog() {
+  if (typeof elements.manualDebtDialog.close === "function") {
+    elements.manualDebtDialog.close();
+  } else {
+    elements.manualDebtDialog.removeAttribute("open");
+  }
+}
+
+function saveManualDebt(event) {
+  event.preventDefault();
+  clearManualDebtErrors();
+  const creditor = elements.manualDebtCreditor.value.trim();
+  const debtor = elements.manualDebtDebtor.value.trim();
+  const amount = Number(elements.manualDebtAmount.value);
+  const date = elements.manualDebtDate.value;
+
+  if (!creditor) return showManualDebtError("Hãy nhập người đã ứng tiền.", elements.manualDebtCreditor);
+  if (!debtor) return showManualDebtError("Hãy nhập người cần trả khoản này.", elements.manualDebtDebtor);
+  if (normalizeName(creditor) === normalizeName(debtor)) {
+    return showManualDebtError("Chủ nợ và người nợ cần là hai người khác nhau.", elements.manualDebtDebtor);
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return showManualDebtError("Số tiền cần lớn hơn 0 ₫.", elements.manualDebtAmount);
+  }
+  if (!date) return showManualDebtError("Hãy chọn ngày ghi nhận khoản nợ.", elements.manualDebtDate);
+
+  const generatedId = globalThis.crypto?.randomUUID?.()
+    || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const entry = createManualDebtEntry({
+    id: generatedId,
+    savedAt: new Date().toISOString(),
+    creditor,
+    debtor,
+    amount,
+    date,
+    note: elements.manualDebtNote.value,
+    status: elements.manualDebtStatus.value,
+  });
+  if (!entry) {
+    showManualDebtError("Thông tin khoản nợ chưa hợp lệ. Hãy kiểm tra rồi thử lại.");
+    return;
+  }
+
+  try {
+    debtEntries = upsertDebtEntries(localStorage, entry.billId, [entry]);
+  } catch {
+    showManualDebtError("Trình duyệt chưa thể lưu dữ liệu. Hãy kiểm tra quyền lưu trữ rồi thử lại.");
+    return;
+  }
+  debtPersonFilter = normalizeName(entry.debtor);
+  debtYearFilter = entry.date.slice(0, 4);
+  debtPage = 1;
+  closeManualDebtDialog();
+  renderDebtLedger();
+}
+
 function renderDebtSummaryCard(summary) {
   const isActive = normalizeName(summary.name) === debtPersonFilter;
   return `
@@ -116,7 +240,7 @@ function renderDebtSummaryCard(summary) {
           <strong>${formatMoney(summary.paidAmount)}</strong>
         </span>
       </span>
-      <small class="debt-summary-meta">${summary.unpaidCount} khoản chưa trả · ${summary.billCount} bill</small>
+      <small class="debt-summary-meta">${summary.unpaidCount} khoản chưa trả · ${summary.billCount} lần ghi nhận</small>
     </button>
   `;
 }
@@ -417,6 +541,17 @@ elements.debtFilter.addEventListener("change", (event) => {
   debtPage = 1;
   renderDebtLedger();
 });
+
+elements.openManualDebt.addEventListener("click", openManualDebtDialog);
+elements.openManualDebtEmpty.addEventListener("click", openManualDebtDialog);
+elements.cancelManualDebt.addEventListener("click", closeManualDebtDialog);
+elements.manualDebtForm.addEventListener("submit", saveManualDebt);
+[
+  elements.manualDebtCreditor,
+  elements.manualDebtDebtor,
+  elements.manualDebtAmount,
+  elements.manualDebtDate,
+].forEach((input) => input.addEventListener("input", clearManualDebtErrors));
 
 elements.debtYearFilter.addEventListener("change", (event) => {
   debtYearFilter = event.target.value;

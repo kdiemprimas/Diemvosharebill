@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   DEBT_STORAGE_KEY,
   createDebtEntries,
+  createManualDebtEntry,
   filterDebtEntriesByYear,
   getDebtOverview,
   getDebtSummary,
@@ -37,6 +38,46 @@ const bill = {
     { name: "Son Vo", payable: 35000 },
   ],
 };
+
+test("tạo một khoản nợ nhập tay với thông tin đã được chuẩn hóa", () => {
+  const entry = createManualDebtEntry({
+    id: "manual-1",
+    savedAt: "2026-08-20T10:00:00.000Z",
+    creditor: "  Diem   Vo ",
+    debtor: " Tin Nguyen ",
+    amount: "48.500",
+    date: "2026-08-19",
+    note: "  Vé xem phim   cuối tuần ",
+    status: "paid",
+  });
+
+  assert.deepEqual(entry, {
+    id: "manual:manual-1",
+    billId: "manual:manual-1",
+    creditor: "Diem Vo",
+    debtor: "Tin Nguyen",
+    amount: 48500,
+    date: "2026-08-19",
+    note: "Vé xem phim cuối tuần",
+    status: "paid",
+    savedAt: "2026-08-20T10:00:00.000Z",
+  });
+});
+
+test("không tạo khoản nhập tay thiếu dữ liệu hoặc có chủ nợ trùng người nợ", () => {
+  const base = {
+    id: "manual-1",
+    savedAt: "2026-08-20T10:00:00.000Z",
+    creditor: "Diem",
+    debtor: "Tin",
+    amount: 25000,
+    date: "2026-08-20",
+  };
+
+  assert.equal(createManualDebtEntry({ ...base, amount: 0 }), null);
+  assert.equal(createManualDebtEntry({ ...base, debtor: "  DIEM " }), null);
+  assert.equal(createManualDebtEntry({ ...base, date: "20/08/2026" }), null);
+});
 
 test("tạo từng khoản nợ từ kết quả chia và bỏ người đã trả bill", () => {
   const entries = createDebtEntries({

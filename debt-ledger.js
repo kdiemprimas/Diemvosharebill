@@ -82,6 +82,38 @@ export function createDebtEntries({
     .filter((entry) => entry && normalizeNameKey(entry.debtor) !== creditorKey);
 }
 
+export function createManualDebtEntry({
+  id,
+  savedAt,
+  creditor,
+  debtor,
+  amount,
+  date,
+  note,
+  status = "unpaid",
+}) {
+  const manualId = cleanText(id, 80);
+  const cleanCreditor = cleanText(creditor, 80);
+  const cleanDebtor = cleanText(debtor, 80);
+  if (
+    !manualId || !cleanCreditor || !cleanDebtor ||
+    normalizeNameKey(cleanCreditor) === normalizeNameKey(cleanDebtor)
+  ) return null;
+
+  const entryId = `manual:${manualId}`;
+  return normalizeDebtEntry({
+    id: entryId,
+    billId: entryId,
+    creditor: cleanCreditor,
+    debtor: cleanDebtor,
+    amount,
+    date,
+    note,
+    status,
+    savedAt,
+  });
+}
+
 export function parseDebtEntries(rawValue) {
   try {
     const parsed = JSON.parse(rawValue || "[]");

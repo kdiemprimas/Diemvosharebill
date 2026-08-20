@@ -97,6 +97,14 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /id="debt-page-prev"/);
   assert.match(historyHtml, /id="debt-page-status"/);
   assert.match(historyHtml, /id="debt-page-next"/);
+  assert.match(historyHtml, /id="open-manual-debt"/);
+  assert.match(historyHtml, /<dialog[^>]+id="manual-debt-dialog"/);
+  assert.match(historyHtml, /id="manual-debt-creditor"[^>]+required/);
+  assert.match(historyHtml, /id="manual-debt-debtor"[^>]+required/);
+  assert.match(historyHtml, /id="manual-debt-amount"[^>]+required/);
+  assert.match(historyHtml, /id="manual-debt-date"[^>]+required/);
+  assert.match(historyHtml, /id="manual-debt-status"/);
+  assert.match(historyHtml, /id="manual-debt-error"[^>]+role="alert"/);
   assert.match(historyHtml, /class="melo-performer"/);
   assert.match(historyHtml, /class="melo-sprite melo-sprite-running"/);
   assert.match(historyHtml, /class="melo-sprite melo-sprite-singing"/);
@@ -115,6 +123,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /history\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /bill-history\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /debt-ledger\.js\?v=[a-f0-9]{12}/);
+  assert.match(historyApp, /createManualDebtEntry/);
+  assert.match(historyApp, /upsertDebtEntries/);
   const css = await readFile(join(outputDir, "styles.css"), "utf8");
   assert.match(css, /@keyframes melo-sing-across/);
   assert.match(css, /@keyframes melo-sing-frames/);

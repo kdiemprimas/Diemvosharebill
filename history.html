@@ -95,9 +95,12 @@
             <div>
               <p class="eyebrow">Theo dõi qua nhiều ngày</p>
               <h2 id="debt-ledger-heading">Sổ tiền chia theo người</h2>
-              <p class="debt-ledger-intro">Cộng dồn các khoản chưa trả của từng người từ những bill bạn đã chọn lưu.</p>
+              <p class="debt-ledger-intro">Cộng dồn các khoản chưa trả của từng người từ bill đã lưu hoặc thông tin bạn nhập thêm.</p>
             </div>
             <div class="debt-ledger-controls">
+              <button class="debt-add-button" id="open-manual-debt" type="button">
+                + Thêm khoản nợ
+              </button>
               <label class="debt-filter-label debt-person-filter-label" for="debt-person-filter">
                 <span>Lọc theo người</span>
                 <select id="debt-person-filter">
@@ -151,7 +154,8 @@
 
           <div class="debt-ledger-empty" id="debt-ledger-empty">
             <strong>Chưa có khoản tiền nào được lưu</strong>
-            <p>Sau khi chia xong, chọn “Lưu vào sổ tiền chia” ở phần kết quả.</p>
+            <p>Bạn có thể nhập tay một khoản nợ hoặc lưu kết quả sau khi chia bill.</p>
+            <button class="debt-empty-add-button" id="open-manual-debt-empty" type="button">Thêm khoản nợ đầu tiên</button>
             <a href="./index.html">Chia một bill mới</a>
           </div>
           <p class="debt-filter-empty" id="debt-filter-empty" hidden>Không có khoản nào của người này.</p>
@@ -222,6 +226,66 @@
         <p>Lịch sử chỉ được lưu trên trình duyệt của bạn.</p>
       </footer>
     </div>
+
+    <dialog
+      class="confirm-dialog save-debt-dialog manual-debt-dialog"
+      id="manual-debt-dialog"
+      aria-labelledby="manual-debt-title"
+      aria-describedby="manual-debt-description"
+    >
+      <div class="confirm-dialog-content save-debt-dialog-content">
+        <img
+          class="confirm-dialog-pet"
+          src="./assets/teolaegi-pet-logo.png"
+          width="72"
+          height="78"
+          alt=""
+          aria-hidden="true"
+        />
+        <div class="confirm-dialog-copy">
+          <span class="confirm-dialog-eyebrow">Nhập tay</span>
+          <h2 id="manual-debt-title">Thêm một khoản nợ</h2>
+          <p id="manual-debt-description">
+            Ghi lại người cần trả, người đã ứng tiền và số tiền của khoản này.
+          </p>
+        </div>
+        <form class="save-debt-form manual-debt-form" id="manual-debt-form" novalidate>
+          <label class="field" for="manual-debt-creditor">
+            <span>Chủ nợ / người đã ứng <b aria-hidden="true">*</b></span>
+            <input id="manual-debt-creditor" list="manual-debt-person-options" maxlength="80" autocomplete="off" required aria-required="true" aria-describedby="manual-debt-error" />
+          </label>
+          <label class="field" for="manual-debt-debtor">
+            <span>Người nợ <b aria-hidden="true">*</b></span>
+            <input id="manual-debt-debtor" list="manual-debt-person-options" maxlength="80" autocomplete="off" required aria-required="true" aria-describedby="manual-debt-error" />
+          </label>
+          <datalist id="manual-debt-person-options"></datalist>
+          <label class="field" for="manual-debt-amount">
+            <span>Số tiền (₫) <b aria-hidden="true">*</b></span>
+            <input id="manual-debt-amount" type="number" min="1" step="1000" inputmode="numeric" placeholder="Ví dụ: 50000" required aria-required="true" aria-describedby="manual-debt-error" />
+          </label>
+          <label class="field" for="manual-debt-date">
+            <span>Ngày ghi nhận <b aria-hidden="true">*</b></span>
+            <input id="manual-debt-date" type="date" required aria-required="true" aria-describedby="manual-debt-error" />
+          </label>
+          <label class="field save-debt-note-field" for="manual-debt-note">
+            <span>Ghi chú</span>
+            <input id="manual-debt-note" maxlength="160" placeholder="Ví dụ: Vé xem phim cuối tuần" />
+          </label>
+          <label class="field" for="manual-debt-status">
+            <span>Trạng thái</span>
+            <select id="manual-debt-status">
+              <option value="unpaid">Chưa trả</option>
+              <option value="paid">Đã trả</option>
+            </select>
+          </label>
+          <p class="save-debt-error manual-debt-error" id="manual-debt-error" role="alert" aria-live="assertive"></p>
+          <div class="confirm-dialog-actions">
+            <button class="confirm-dialog-cancel" id="cancel-manual-debt" type="button">Hủy</button>
+            <button class="confirm-dialog-submit" type="submit">Lưu khoản nợ</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
 
     <dialog
       class="confirm-dialog"
