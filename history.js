@@ -23,6 +23,11 @@ import {
   updateDebtStatus,
   upsertDebtEntries,
 } from "./debt-ledger.js";
+import {
+  createDebtWorkbook,
+  createDebtWorkbookFilename,
+  getDebtExportEntries,
+} from "./debt-export.js";
 
 const money = new Intl.NumberFormat("vi-VN");
 const confirmedTime = new Intl.DateTimeFormat("vi-VN", {
@@ -47,6 +52,8 @@ const elements = {
   debtEmpty: document.querySelector("#debt-ledger-empty"),
   debtFilterEmpty: document.querySelector("#debt-filter-empty"),
   debtClearButton: document.querySelector("#clear-debt-ledger"),
+  debtExportButton: document.querySelector("#export-debt-excel"),
+  debtExportStatus: document.querySelector("#debt-export-status"),
   debtTotalUnpaid: document.querySelector("#debt-total-unpaid"),
   debtTotalPaid: document.querySelector("#debt-total-paid"),
   debtUnpaidCount: document.querySelector("#debt-unpaid-count"),
@@ -348,9 +355,48 @@ function renderDebtLedger() {
     ? `Trang ${pagination.page} / ${pagination.pageCount} · ${pagination.start}–${pagination.end} trên ${pagination.total} khoản`
     : "Trang 1 / 1";
   elements.debtClearButton.hidden = debtEntries.length === 0;
+  elements.debtExportButton.disabled = filteredEntries.length === 0;
   elements.debtEmpty.hidden = debtEntries.length > 0;
   elements.debtTableWrap.hidden = filteredEntries.length === 0;
   elements.debtFilterEmpty.hidden = debtEntries.length === 0 || filteredEntries.length > 0;
+}
+
+function exportDebtWorkbook() {
+  const entries = getDebtExportEntries(debtEntries, debtPersonFilter, debtYearFilter);
+  if (!entries.length) return;
+
+  const originalLabel = elements.debtExportButton.textContent.trim();
+  elements.debtExportButton.disabled = true;
+  elements.debtExportButton.textContent = "Đang xuất…";
+  elements.debtExportStatus.textContent = "Đang tạo file Excel.";
+  try {
+    const bytes = createDebtWorkbook(entries);
+    const blob = new Blob([bytes], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = createDebtWorkbookFilename();
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    elements.debtExportButton.textContent = "Đã xuất ✓";
+    elements.debtExportStatus.textContent = `Đã xuất ${entries.length} khoản sang Excel.`;
+  } catch {
+    elements.debtExportButton.textContent = "Không thể xuất";
+    elements.debtExportStatus.textContent = "Không thể tạo file Excel. Hãy thử lại.";
+  }
+
+  window.setTimeout(() => {
+    elements.debtExportButton.textContent = originalLabel;
+    elements.debtExportButton.disabled = getDebtExportEntries(
+      debtEntries,
+      debtPersonFilter,
+      debtYearFilter,
+    ).length === 0;
+  }, 1800);
 }
 
 function renderPersonResult(person) {
@@ -559,6 +605,8 @@ elements.debtFilter.addEventListener("change", (event) => {
   debtPage = 1;
   renderDebtLedger();
 });
+
+elements.debtExportButton.addEventListener("click", exportDebtWorkbook);
 
 elements.openManualDebt.addEventListener("click", openManualDebtDialog);
 elements.openManualDebtEmpty.addEventListener("click", openManualDebtDialog);

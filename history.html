@@ -18,6 +18,9 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {"imports":{"fflate":"./node_modules/fflate/esm/browser.js"}}
+    </script>
   </head>
   <body>
     <div class="melo-stage" aria-hidden="true">
@@ -101,6 +104,9 @@
               <button class="debt-add-button" id="open-manual-debt" type="button">
                 + Thêm khoản nợ
               </button>
+              <button class="debt-export-button" id="export-debt-excel" type="button" disabled>
+                Xuất Excel
+              </button>
               <label class="debt-filter-label debt-person-filter-label" for="debt-person-filter">
                 <span>Lọc theo người</span>
                 <select id="debt-person-filter">
@@ -116,6 +122,7 @@
               <button class="history-clear-button" id="clear-debt-ledger" type="button" hidden>
                 Xóa sổ tiền chia
               </button>
+              <span class="debt-export-status" id="debt-export-status" role="status" aria-live="polite" aria-atomic="true"></span>
             </div>
           </div>
 

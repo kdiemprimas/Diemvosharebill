@@ -412,7 +412,11 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .debt-ledger-controls { display: flex; align-items: end; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
 .debt-add-button { min-height: 38px; padding: 8px 13px; color: #fffaf3; background: var(--accent-dark); border: 1px solid var(--accent-dark); border-radius: 10px; box-shadow: 0 7px 16px rgba(185, 86, 88, 0.17); cursor: pointer; font-size: 9px; font-weight: 800; white-space: nowrap; }
 .debt-add-button:hover { background: #a94f55; border-color: #a94f55; transform: translateY(-1px); }
-.debt-add-button:focus-visible, .debt-empty-add-button:focus-visible { outline: 3px solid rgba(121, 168, 183, 0.45); outline-offset: 2px; }
+.debt-export-button { min-height: 38px; padding: 8px 13px; color: #3f7168; background: #e2efe9; border: 1px solid rgba(69, 121, 105, 0.24); border-radius: 10px; cursor: pointer; font-size: 9px; font-weight: 800; white-space: nowrap; }
+.debt-export-button:hover:not(:disabled) { color: #fffaf3; background: #4f7f73; border-color: #4f7f73; transform: translateY(-1px); }
+.debt-export-button:disabled { cursor: not-allowed; opacity: 0.48; }
+.debt-add-button:focus-visible, .debt-export-button:focus-visible, .debt-empty-add-button:focus-visible { outline: 3px solid rgba(121, 168, 183, 0.45); outline-offset: 2px; }
+.debt-export-status { flex-basis: 100%; min-height: 1em; color: #3f7168; font-size: 8px; font-weight: 700; text-align: right; }
 .debt-filter-label { display: grid; gap: 6px; }
 .debt-person-filter-label { min-width: 170px; }
 .debt-year-filter-label { min-width: 120px; }
@@ -635,7 +639,8 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 
 @media (max-width: 430px) {
   .debt-ledger-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .debt-add-button { grid-column: 1 / -1; }
+  .debt-add-button, .debt-export-button { grid-column: 1 / -1; }
+  .debt-export-status { grid-column: 1 / -1; text-align: left; }
   .debt-ledger-controls .history-clear-button { grid-column: 1 / -1; max-width: none; }
   .debt-year-filter-label { max-width: none; }
   .debt-pagination, .history-pagination { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; }

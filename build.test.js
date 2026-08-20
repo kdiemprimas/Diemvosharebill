@@ -21,6 +21,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
     "bill-ocr.js",
     "bill-history.js",
     "debt-ledger.js",
+    "debt-export.js",
     "assets/teolaegi-pet-logo.png",
     "assets/teolaegi-spritesheet.webp",
     "assets/melo-spritesheet.webp",
@@ -28,6 +29,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
     "node_modules/tesseract.js/dist/tesseract.esm.min.js",
     "node_modules/tesseract.js/dist/worker.min.js",
     "node_modules/tesseract.js-core/tesseract-core.wasm.js",
+    "node_modules/fflate/esm/browser.js",
     "ocr-data/vie.traineddata.gz",
     "ocr-data/eng.traineddata.gz",
   ];
@@ -94,6 +96,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /id="debt-summary-scroll-hint"/);
   assert.match(historyHtml, /id="debt-person-filter"/);
   assert.match(historyHtml, /id="debt-year-filter"/);
+  assert.match(historyHtml, /id="export-debt-excel"/);
+  assert.match(historyHtml, /id="debt-export-status"[^>]+aria-live="polite"/);
   assert.match(historyHtml, /id="debt-total-paid"/);
   assert.match(historyHtml, /id="debt-pagination"/);
   assert.match(historyHtml, /id="debt-page-prev"/);
@@ -125,6 +129,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /history\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /bill-history\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /debt-ledger\.js\?v=[a-f0-9]{12}/);
+  assert.match(historyApp, /debt-export\.js\?v=[a-f0-9]{12}/);
+  assert.match(historyApp, /createDebtWorkbook/);
   assert.match(historyApp, /createManualDebtEntry/);
   assert.match(historyApp, /formatDebtAmountInput/);
   assert.match(historyApp, /parseDebtAmountInput/);

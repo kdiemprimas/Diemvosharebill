@@ -14,6 +14,7 @@ const publicFiles = [
   "bill-ocr.js",
   "bill-history.js",
   "debt-ledger.js",
+  "debt-export.js",
 ];
 const imageAssets = [
   "assets/teolaegi-pet-logo.png",
@@ -45,6 +46,10 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
   const versionHtml = (html, scriptName) => html
     .replace("./styles.css", `./styles.css?v=${assetVersion}`)
     .replace(`./${scriptName}`, `./${scriptName}?v=${assetVersion}`)
+    .replace(
+      "./node_modules/fflate/esm/browser.js",
+      `./node_modules/fflate/esm/browser.js?v=${assetVersion}`,
+    )
     .replaceAll(
       "./assets/teolaegi-pet-logo.png",
       `./assets/teolaegi-pet-logo.png?v=${assetVersion}`,
@@ -72,7 +77,8 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
     .replace("./debt-ledger.js", `./debt-ledger.js?v=${assetVersion}`);
   const versionedHistoryApp = sourceContents[publicFiles.indexOf("history.js")]
     .replace("./bill-history.js", `./bill-history.js?v=${assetVersion}`)
-    .replace("./debt-ledger.js", `./debt-ledger.js?v=${assetVersion}`);
+    .replace("./debt-ledger.js", `./debt-ledger.js?v=${assetVersion}`)
+    .replace("./debt-export.js", `./debt-export.js?v=${assetVersion}`);
   await Promise.all([
     writeFile(join(target, "index.html"), versionedHtml, "utf8"),
     writeFile(join(target, "history.html"), versionedHistoryHtml, "utf8"),
@@ -93,6 +99,11 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
     join(sourceRoot, "node_modules", "tesseract.js-core"),
     join(target, "node_modules", "tesseract.js-core"),
     { recursive: true },
+  );
+  await mkdir(join(target, "node_modules", "fflate", "esm"), { recursive: true });
+  await copyFile(
+    join(sourceRoot, "node_modules", "fflate", "esm", "browser.js"),
+    join(target, "node_modules", "fflate", "esm", "browser.js"),
   );
 
   await mkdir(join(target, "ocr-data"), { recursive: true });
