@@ -26,6 +26,8 @@ import {
   upsertDebtEntries,
 } from "./debt-ledger.js";
 import {
+  createPersonDebtReport,
+  createPersonDebtReportFilename,
   createDebtWorkbook,
   createDebtWorkbookFilename,
   getDebtExportEntries,
@@ -55,6 +57,7 @@ const elements = {
   debtFilterEmpty: document.querySelector("#debt-filter-empty"),
   debtClearButton: document.querySelector("#clear-debt-ledger"),
   debtExportButton: document.querySelector("#export-debt-excel"),
+  debtReportButton: document.querySelector("#export-person-debt-image"),
   debtExportStatus: document.querySelector("#debt-export-status"),
   debtTotalUnpaid: document.querySelector("#debt-total-unpaid"),
   debtTotalPaid: document.querySelector("#debt-total-paid"),
@@ -403,6 +406,7 @@ function renderDebtLedger() {
     : "Trang 1 / 1";
   elements.debtClearButton.hidden = debtEntries.length === 0;
   elements.debtExportButton.disabled = filteredEntries.length === 0;
+  elements.debtReportButton.disabled = !debtPersonFilter || filteredEntries.length === 0;
   elements.debtEmpty.hidden = debtEntries.length > 0;
   elements.debtTableWrap.hidden = filteredEntries.length === 0;
   elements.debtFilterEmpty.hidden = debtEntries.length === 0 || filteredEntries.length > 0;
@@ -459,6 +463,177 @@ function exportDebtWorkbook() {
       debtPersonFilter,
       debtYearFilter,
     ).length === 0;
+  }, 1800);
+}
+
+function drawRoundedRect(context, x, y, width, height, radius, fill) {
+  const corner = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + corner, y);
+  context.arcTo(x + width, y, x + width, y + height, corner);
+  context.arcTo(x + width, y + height, x, y + height, corner);
+  context.arcTo(x, y + height, x, y, corner);
+  context.arcTo(x, y, x + width, y, corner);
+  context.closePath();
+  context.fillStyle = fill;
+  context.fill();
+}
+
+function fitCanvasText(context, value, maxWidth) {
+  const text = String(value || "");
+  if (context.measureText(text).width <= maxWidth) return text;
+  let fitted = text;
+  while (fitted.length > 1 && context.measureText(`${fitted}…`).width > maxWidth) {
+    fitted = fitted.slice(0, -1);
+  }
+  return `${fitted}…`;
+}
+
+function getReportCreditorRows(creditors, maxRows = 6) {
+  if (creditors.length <= maxRows) return creditors;
+  const visible = creditors.slice(0, maxRows - 1);
+  const remaining = creditors.slice(maxRows - 1);
+  return [
+    ...visible,
+    {
+      name: `${remaining.length} chủ nợ khác`,
+      amount: remaining.reduce((total, { amount }) => total + amount, 0),
+      unpaidCount: remaining.reduce((total, { unpaidCount }) => total + unpaidCount, 0),
+    },
+  ];
+}
+
+function drawPersonDebtReport(report) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas is unavailable");
+
+  context.fillStyle = "#fffaf3";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "#557f8e";
+  context.fillRect(0, 0, canvas.width, 24);
+
+  context.fillStyle = "#557f8e";
+  context.font = "800 30px system-ui, sans-serif";
+  context.fillText("AI ĂN NẤY TRẢ", 100, 105);
+  context.fillStyle = "#7b706d";
+  context.font = "700 24px system-ui, sans-serif";
+  context.textAlign = "right";
+  context.fillText("BÁO CÁO TIỀN NỢ", 980, 105);
+  context.textAlign = "left";
+
+  context.fillStyle = "#2f3e46";
+  context.font = "800 58px system-ui, sans-serif";
+  context.fillText(fitCanvasText(context, report.personName, 880), 100, 200);
+  context.fillStyle = "#7b706d";
+  context.font = "500 26px system-ui, sans-serif";
+  context.fillText(report.year ? `Các khoản trong năm ${report.year}` : "Các khoản trong tất cả thời gian", 100, 248);
+
+  drawRoundedRect(context, 100, 300, 880, 300, 36, report.totalUnpaid ? "#fae5e2" : "#deeee7");
+  context.fillStyle = report.totalUnpaid ? "#a54e54" : "#3f7168";
+  context.font = "800 25px system-ui, sans-serif";
+  context.fillText(report.totalUnpaid ? "TỔNG CÒN PHẢI TRẢ" : "ĐÃ TRẢ HẾT", 150, 370);
+  context.font = "900 78px system-ui, sans-serif";
+  context.fillText(formatMoney(report.totalUnpaid), 150, 475);
+
+  context.fillStyle = "rgba(255, 255, 255, 0.72)";
+  drawRoundedRect(context, 150, 510, 325, 58, 18, "rgba(255, 255, 255, 0.72)");
+  drawRoundedRect(context, 495, 510, 435, 58, 18, "rgba(255, 255, 255, 0.72)");
+  context.fillStyle = "#5f5754";
+  context.font = "700 22px system-ui, sans-serif";
+  context.fillText(`${report.unpaidCount} khoản chưa trả`, 176, 548);
+  context.fillText(`Đã ghi nhận trả ${formatMoney(report.totalPaid)}`, 521, 548);
+
+  context.fillStyle = "#2f3e46";
+  context.font = "800 32px system-ui, sans-serif";
+  context.fillText("Chi tiết theo chủ nợ", 100, 680);
+
+  if (!report.creditors.length) {
+    drawRoundedRect(context, 100, 720, 880, 180, 28, "#edf6f1");
+    context.fillStyle = "#3f7168";
+    context.font = "800 32px system-ui, sans-serif";
+    context.fillText("Không còn khoản nào cần trả", 150, 795);
+    context.fillStyle = "#687773";
+    context.font = "500 24px system-ui, sans-serif";
+    context.fillText("Mọi khoản đã ghi nhận đều có trạng thái đã trả.", 150, 845);
+  } else {
+    getReportCreditorRows(report.creditors).forEach((creditor, index) => {
+      const y = 720 + index * 90;
+      if (index % 2 === 0) drawRoundedRect(context, 100, y - 40, 880, 78, 18, "#f6f0e8");
+      context.fillStyle = "#2f3e46";
+      context.font = "700 27px system-ui, sans-serif";
+      context.fillText(fitCanvasText(context, creditor.name, 440), 135, y + 9);
+      context.fillStyle = "#847976";
+      context.font = "500 20px system-ui, sans-serif";
+      context.fillText(`${creditor.unpaidCount} khoản`, 590, y + 8);
+      context.fillStyle = "#a54e54";
+      context.font = "800 27px system-ui, sans-serif";
+      context.textAlign = "right";
+      context.fillText(formatMoney(creditor.amount), 945, y + 9);
+      context.textAlign = "left";
+    });
+  }
+
+  context.strokeStyle = "#d8d0c8";
+  context.setLineDash([10, 10]);
+  context.beginPath();
+  context.moveTo(100, 1245);
+  context.lineTo(980, 1245);
+  context.stroke();
+  context.setLineDash([]);
+  context.fillStyle = "#7b706d";
+  context.font = "500 21px system-ui, sans-serif";
+  context.fillText(`Xuất ngày ${report.generatedDate}`, 100, 1302);
+  context.textAlign = "right";
+  context.fillText("Lưu từ sổ tiền chia", 980, 1302);
+  context.textAlign = "left";
+  return canvas;
+}
+
+function canvasToPngBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("PNG export failed"));
+    }, "image/png");
+  });
+}
+
+async function exportPersonDebtReportImage() {
+  const report = createPersonDebtReport(debtEntries, debtPersonFilter, debtYearFilter);
+  if (!report) return;
+
+  const originalLabel = elements.debtReportButton.textContent.trim();
+  elements.debtReportButton.disabled = true;
+  elements.debtReportButton.textContent = "Đang tạo ảnh…";
+  elements.debtExportStatus.textContent = `Đang tạo báo cáo của ${report.personName}.`;
+  try {
+    const canvas = drawPersonDebtReport(report);
+    const blob = await canvasToPngBlob(canvas);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = createPersonDebtReportFilename(report.personName, report.year);
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    elements.debtReportButton.textContent = "Đã xuất ảnh ✓";
+    elements.debtExportStatus.textContent = `Đã xuất báo cáo của ${report.personName}: còn nợ ${formatMoney(report.totalUnpaid)}.`;
+  } catch {
+    elements.debtReportButton.textContent = "Không thể xuất";
+    elements.debtExportStatus.textContent = "Không thể tạo ảnh báo cáo. Hãy thử lại.";
+  }
+
+  window.setTimeout(() => {
+    elements.debtReportButton.textContent = originalLabel;
+    elements.debtReportButton.disabled = !createPersonDebtReport(
+      debtEntries,
+      debtPersonFilter,
+      debtYearFilter,
+    );
   }, 1800);
 }
 
@@ -676,6 +851,7 @@ elements.debtFilter.addEventListener("change", (event) => {
 });
 
 elements.debtExportButton.addEventListener("click", exportDebtWorkbook);
+elements.debtReportButton.addEventListener("click", exportPersonDebtReportImage);
 
 elements.openManualDebt.addEventListener("click", openManualDebtDialog);
 elements.openManualDebtEmpty.addEventListener("click", openManualDebtDialog);

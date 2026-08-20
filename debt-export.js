@@ -8,6 +8,40 @@ function normalizeName(value) {
   return String(value || "").trim().toLocaleLowerCase("vi-VN");
 }
 
+function cleanAmount(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.round(number)) : 0;
+}
+
+function safeDate(value) {
+  return value instanceof Date && !Number.isNaN(value.getTime()) ? value : new Date();
+}
+
+function formatDateKey(value) {
+  const date = safeDate(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDisplayDate(value) {
+  const [year, month, day] = formatDateKey(value).split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function safeFilenamePart(value, fallback) {
+  const cleaned = String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, "d")
+    .toLocaleLowerCase("vi-VN")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+  return cleaned || fallback;
+}
+
 function escapeXml(value) {
   return String(value ?? "")
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
@@ -166,6 +200,62 @@ export function getDebtExportEntries(entries = [], personFilter = "", yearFilter
   });
 }
 
+export function createPersonDebtReport(
+  entries = [],
+  personFilter = "",
+  yearFilter = "",
+  generatedAt = new Date(),
+) {
+  const normalizedPerson = normalizeName(personFilter);
+  if (!normalizedPerson) return null;
+  const matchingEntries = getDebtExportEntries(entries, normalizedPerson, yearFilter);
+  if (!matchingEntries.length) return null;
+
+  const creditors = new Map();
+  let totalUnpaid = 0;
+  let totalPaid = 0;
+  let unpaidCount = 0;
+  matchingEntries.forEach((entry) => {
+    const amount = cleanAmount(entry?.amount);
+    if (entry?.status === "paid") {
+      totalPaid += amount;
+      return;
+    }
+
+    totalUnpaid += amount;
+    unpaidCount += 1;
+    const creditorName = String(entry?.creditor || "").trim() || "Chưa xác định";
+    const creditorKey = normalizeName(creditorName);
+    const creditor = creditors.get(creditorKey) || {
+      name: creditorName,
+      amount: 0,
+      unpaidCount: 0,
+    };
+    creditor.amount += amount;
+    creditor.unpaidCount += 1;
+    creditors.set(creditorKey, creditor);
+  });
+
+  return {
+    personName: String(matchingEntries[0]?.debtor || personFilter).trim(),
+    year: String(yearFilter || "").trim(),
+    generatedDate: formatDisplayDate(generatedAt),
+    totalUnpaid,
+    totalPaid,
+    unpaidCount,
+    entryCount: matchingEntries.length,
+    creditors: [...creditors.values()].sort((left, right) =>
+      right.amount - left.amount || left.name.localeCompare(right.name, "vi"),
+    ),
+  };
+}
+
+export function createPersonDebtReportFilename(personName, year = "", date = new Date()) {
+  const person = safeFilenamePart(personName, "nguoi-no");
+  const period = /^\d{4}$/.test(String(year || "")) ? String(year) : "tat-ca";
+  return `bao-cao-no-${person}-${period}-${formatDateKey(date)}.png`;
+}
+
 export function createDebtWorkbook(entries = []) {
   const files = {
     "[Content_Types].xml": strToU8(CONTENT_TYPES_XML),
@@ -179,9 +269,5 @@ export function createDebtWorkbook(entries = []) {
 }
 
 export function createDebtWorkbookFilename(date = new Date()) {
-  const value = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `so-tien-chia-${year}-${month}-${day}.xlsx`;
+  return `so-tien-chia-${formatDateKey(date)}.xlsx`;
 }

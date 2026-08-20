@@ -414,6 +414,8 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .debt-add-button:hover { background: #a94f55; border-color: #a94f55; transform: translateY(-1px); }
 .debt-export-button { min-height: 38px; padding: 8px 13px; color: #3f7168; background: #e2efe9; border: 1px solid rgba(69, 121, 105, 0.24); border-radius: 10px; cursor: pointer; font-size: 9px; font-weight: 800; white-space: nowrap; }
 .debt-export-button:hover:not(:disabled) { color: #fffaf3; background: #4f7f73; border-color: #4f7f73; transform: translateY(-1px); }
+.debt-report-button { color: #a54e54; background: #fae5e2; border-color: rgba(165, 78, 84, 0.24); }
+.debt-report-button:hover:not(:disabled) { color: #fffaf3; background: #a54e54; border-color: #a54e54; }
 .debt-export-button:disabled { cursor: not-allowed; opacity: 0.48; }
 .debt-add-button:focus-visible, .debt-export-button:focus-visible, .debt-empty-add-button:focus-visible { outline: 3px solid rgba(121, 168, 183, 0.45); outline-offset: 2px; }
 .debt-export-status { flex-basis: 100%; min-height: 1em; color: #3f7168; font-size: 8px; font-weight: 700; text-align: right; }
