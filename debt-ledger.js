@@ -191,3 +191,26 @@ export function getDebtSummary(entries = []) {
       right.unpaidAmount - left.unpaidAmount || left.name.localeCompare(right.name, "vi"),
     );
 }
+
+export function getDebtOverview(entries = []) {
+  const normalizedEntries = entries.map(normalizeDebtEntry).filter(Boolean);
+  const overview = normalizedEntries.reduce(
+    (overview, entry) => {
+      overview.people.add(normalizeNameKey(entry.debtor));
+      if (entry.status === "paid") {
+        overview.paidAmount += entry.amount;
+      } else {
+        overview.unpaidAmount += entry.amount;
+        overview.unpaidCount += 1;
+      }
+      return overview;
+    },
+    { unpaidAmount: 0, paidAmount: 0, unpaidCount: 0, people: new Set() },
+  );
+  return {
+    unpaidAmount: overview.unpaidAmount,
+    paidAmount: overview.paidAmount,
+    unpaidCount: overview.unpaidCount,
+    peopleCount: overview.people.size,
+  };
+}

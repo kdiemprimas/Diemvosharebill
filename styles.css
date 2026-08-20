@@ -399,12 +399,14 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .debt-person-filter-label { display: grid; gap: 6px; min-width: 170px; }
 .debt-person-filter-label span { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .debt-person-filter-label select { height: 38px; padding: 0 31px 0 11px; background-color: #fffdf9; font-size: 10px; }
-.debt-overview { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 10px; margin: 0 0 15px; }
+.debt-overview { display: grid; grid-template-columns: 1.25fr 1.25fr 0.9fr 0.9fr; gap: 10px; margin: 0 0 15px; }
 .debt-overview > div { display: grid; gap: 6px; padding: 16px 17px; background: rgba(255, 253, 249, 0.84); border: 1px solid rgba(126, 119, 116, 0.12); border-radius: 13px; }
 .debt-overview dt { color: var(--muted); font-size: 9px; }
 .debt-overview dd { margin: 0; color: var(--ink); font-size: 20px; font-weight: 800; }
 .debt-overview > div:first-child { background: linear-gradient(135deg, #f8e0da, #e5f0f1); }
 .debt-overview > div:first-child dd { color: var(--accent-dark); font-size: 24px; }
+.debt-overview > div:nth-child(2) { background: linear-gradient(135deg, #e2efe9, #e5f0f1); }
+.debt-overview > div:nth-child(2) dd { color: #3f7168; font-size: 24px; }
 .debt-summary-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 9px; margin-bottom: 17px; }
 .debt-summary-list:empty { display: none; }
 .debt-summary-card { display: grid; gap: 5px; padding: 13px 14px; text-align: left; color: var(--ink); background: #fffdf9; border: 1px solid rgba(121, 168, 183, 0.22); border-radius: 12px; cursor: pointer; }
@@ -560,7 +562,7 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
   .debt-ledger-controls { width: 100%; align-items: end; justify-content: space-between; }
   .debt-person-filter-label { min-width: 0; flex: 1; }
   .debt-overview { grid-template-columns: 1fr 1fr; }
-  .debt-overview > div:first-child { grid-column: 1 / -1; }
+  .debt-overview > div:first-child, .debt-overview > div:nth-child(2) { grid-column: 1 / -1; }
   .debt-summary-list { grid-template-columns: 1fr 1fr; }
   .debt-table-wrap { overflow: visible; background: transparent; border: 0; }
   .debt-table { display: block; min-width: 0; }

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   DEBT_STORAGE_KEY,
   createDebtEntries,
+  getDebtOverview,
   getDebtSummary,
   parseDebtEntries,
   preserveDebtStatuses,
@@ -127,6 +128,21 @@ test("tổng hợp số tiền chưa trả và đã trả theo từng người q
     { name: "Son", unpaidAmount: 38000, paidAmount: 0, totalAmount: 38000, unpaidCount: 1, billCount: 1 },
     { name: "Tin", unpaidAmount: 16000, paidAmount: 35000, totalAmount: 51000, unpaidCount: 1, billCount: 2 },
   ]);
+});
+
+test("tính riêng tổng tiền đã trả và chưa trả cho phần tổng quan", () => {
+  const entries = parseDebtEntries(JSON.stringify([
+    { id: "1", billId: "a", creditor: "Diem", debtor: "Tin", amount: 16000, date: "2026-08-18", status: "unpaid", savedAt: "2026-08-18T10:00:00Z" },
+    { id: "2", billId: "b", creditor: "Diem", debtor: "Tin", amount: 35000, date: "2026-08-19", status: "paid", savedAt: "2026-08-19T10:00:00Z" },
+    { id: "3", billId: "c", creditor: "Diem", debtor: "Son", amount: 38000, date: "2026-08-20", status: "paid", savedAt: "2026-08-20T10:00:00Z" },
+  ]));
+
+  assert.deepEqual(getDebtOverview(entries), {
+    unpaidAmount: 16000,
+    paidAmount: 73000,
+    unpaidCount: 1,
+    peopleCount: 2,
+  });
 });
 
 test("đổi trạng thái và xóa đúng một khoản đã lưu", () => {

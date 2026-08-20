@@ -7,6 +7,7 @@ import {
 import {
   DEBT_STORAGE_KEY,
   clearDebtEntries as clearStoredDebtEntries,
+  getDebtOverview,
   getDebtSummary,
   readDebtEntries,
   removeDebtEntry,
@@ -36,6 +37,7 @@ const elements = {
   debtFilterEmpty: document.querySelector("#debt-filter-empty"),
   debtClearButton: document.querySelector("#clear-debt-ledger"),
   debtTotalUnpaid: document.querySelector("#debt-total-unpaid"),
+  debtTotalPaid: document.querySelector("#debt-total-paid"),
   debtUnpaidCount: document.querySelector("#debt-unpaid-count"),
   debtPersonCount: document.querySelector("#debt-person-count"),
 };
@@ -133,13 +135,12 @@ function renderDebtLedger() {
   const filteredEntries = debtPersonFilter
     ? debtEntries.filter(({ debtor }) => normalizeName(debtor) === debtPersonFilter)
     : debtEntries;
-  const unpaidEntries = debtEntries.filter(({ status }) => status === "unpaid");
+  const overview = getDebtOverview(debtEntries);
 
-  elements.debtTotalUnpaid.textContent = formatMoney(
-    unpaidEntries.reduce((sum, entry) => sum + entry.amount, 0),
-  );
-  elements.debtUnpaidCount.textContent = String(unpaidEntries.length);
-  elements.debtPersonCount.textContent = String(summary.length);
+  elements.debtTotalUnpaid.textContent = formatMoney(overview.unpaidAmount);
+  elements.debtTotalPaid.textContent = formatMoney(overview.paidAmount);
+  elements.debtUnpaidCount.textContent = String(overview.unpaidCount);
+  elements.debtPersonCount.textContent = String(overview.peopleCount);
   elements.debtSummaryList.innerHTML = summary.map(renderDebtSummaryCard).join("");
   elements.debtList.innerHTML = filteredEntries.map(renderDebtRow).join("");
   elements.debtClearButton.hidden = debtEntries.length === 0;
