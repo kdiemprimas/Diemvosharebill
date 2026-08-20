@@ -192,9 +192,34 @@ export function updateDebtStatus(storage = localStorage, entryId, status) {
   return records;
 }
 
+export function updateDebtStatuses(storage = localStorage, entryIds = [], status) {
+  const ids = new Set(
+    (Array.isArray(entryIds) ? entryIds : [])
+      .map((entryId) => cleanText(entryId, 180))
+      .filter(Boolean),
+  );
+  const nextStatus = status === "paid" ? "paid" : "unpaid";
+  const records = readDebtEntries(storage).map((entry) =>
+    ids.has(entry.id) ? { ...entry, status: nextStatus } : entry,
+  );
+  storage.setItem(DEBT_STORAGE_KEY, JSON.stringify(records));
+  return records;
+}
+
 export function removeDebtEntry(storage = localStorage, entryId) {
   const id = cleanText(entryId, 180);
   const records = readDebtEntries(storage).filter((entry) => entry.id !== id);
+  storage.setItem(DEBT_STORAGE_KEY, JSON.stringify(records));
+  return records;
+}
+
+export function removeDebtEntries(storage = localStorage, entryIds = []) {
+  const ids = new Set(
+    (Array.isArray(entryIds) ? entryIds : [])
+      .map((entryId) => cleanText(entryId, 180))
+      .filter(Boolean),
+  );
+  const records = readDebtEntries(storage).filter((entry) => !ids.has(entry.id));
   storage.setItem(DEBT_STORAGE_KEY, JSON.stringify(records));
   return records;
 }

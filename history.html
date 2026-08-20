@@ -136,11 +136,24 @@
           <div class="debt-summary-list" id="debt-summary-list" tabindex="0" aria-describedby="debt-summary-scroll-hint" role="region" aria-label="Tổng tiền theo từng người"></div>
           <p class="debt-summary-scroll-hint" id="debt-summary-scroll-hint">Cuộn ngang để xem đầy đủ từng người.</p>
 
+          <div class="debt-bulk-actions" id="debt-bulk-actions" hidden>
+            <strong id="debt-selection-count" role="status" aria-live="polite" aria-atomic="true">0 khoản đã chọn</strong>
+            <div class="debt-bulk-buttons" aria-label="Thao tác với các khoản đã chọn">
+              <button class="debt-bulk-status-button is-paid" id="debt-bulk-mark-paid" type="button">Đánh dấu đã trả</button>
+              <button class="debt-bulk-status-button is-unpaid" id="debt-bulk-mark-unpaid" type="button">Đánh dấu chưa trả</button>
+              <button class="debt-bulk-delete-button" id="debt-bulk-delete" type="button">Xóa</button>
+            </div>
+          </div>
+          <p class="visually-hidden" id="debt-bulk-feedback" role="status" aria-live="polite" aria-atomic="true"></p>
+
           <div class="debt-table-wrap" id="debt-table-wrap" hidden>
             <table class="debt-table">
               <caption class="visually-hidden">Danh sách các khoản tiền đã lưu theo từng người</caption>
               <thead>
                 <tr>
+                  <th class="debt-select-cell" scope="col">
+                    <input id="debt-select-page" type="checkbox" aria-label="Chọn tất cả khoản trên trang này" />
+                  </th>
                   <th scope="col">STT</th>
                   <th scope="col">Chủ nợ</th>
                   <th scope="col">Con nợ</th>

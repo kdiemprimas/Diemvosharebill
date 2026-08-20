@@ -19,7 +19,9 @@ import {
   paginateDebtEntries,
   parseDebtAmountInput,
   readDebtEntries,
+  removeDebtEntries,
   removeDebtEntry,
+  updateDebtStatuses,
   updateDebtStatus,
   upsertDebtEntries,
 } from "./debt-ledger.js";
@@ -62,6 +64,13 @@ const elements = {
   debtPagePrev: document.querySelector("#debt-page-prev"),
   debtPageStatus: document.querySelector("#debt-page-status"),
   debtPageNext: document.querySelector("#debt-page-next"),
+  debtBulkActions: document.querySelector("#debt-bulk-actions"),
+  debtSelectionCount: document.querySelector("#debt-selection-count"),
+  debtBulkMarkPaid: document.querySelector("#debt-bulk-mark-paid"),
+  debtBulkMarkUnpaid: document.querySelector("#debt-bulk-mark-unpaid"),
+  debtBulkDelete: document.querySelector("#debt-bulk-delete"),
+  debtBulkFeedback: document.querySelector("#debt-bulk-feedback"),
+  debtSelectPage: document.querySelector("#debt-select-page"),
   openManualDebt: document.querySelector("#open-manual-debt"),
   openManualDebtEmpty: document.querySelector("#open-manual-debt-empty"),
   manualDebtDialog: document.querySelector("#manual-debt-dialog"),
@@ -94,6 +103,8 @@ let debtEntries = readDebtEntries();
 let debtPersonFilter = "";
 let debtYearFilter = "";
 let debtPage = 1;
+let visibleDebtEntryIds = [];
+const selectedDebtIds = new Set();
 let historyDateFrom = "";
 let historyDateTo = "";
 let historyPage = 1;
@@ -241,6 +252,7 @@ function saveManualDebt(event) {
   debtPersonFilter = normalizeName(entry.debtor);
   debtYearFilter = entry.date.slice(0, 4);
   debtPage = 1;
+  selectedDebtIds.clear();
   closeManualDebtDialog();
   renderDebtLedger();
 }
@@ -272,8 +284,18 @@ function renderDebtSummaryCard(summary) {
 
 function renderDebtRow(entry, index) {
   const isPaid = entry.status === "paid";
+  const isSelected = selectedDebtIds.has(entry.id);
   return `
-    <tr>
+    <tr class="${isSelected ? "is-selected" : ""}">
+      <td class="debt-select-cell" data-label="Chọn">
+        <input
+          class="debt-row-checkbox"
+          type="checkbox"
+          data-select-debt-id="${escapeHtml(entry.id)}"
+          aria-label="Chọn khoản của ${escapeHtml(entry.debtor)}, ${escapeHtml(formatMoney(entry.amount))}"
+          ${isSelected ? "checked" : ""}
+        />
+      </td>
       <td data-label="STT">${index + 1}</td>
       <td data-label="Chủ nợ">${escapeHtml(entry.creditor)}</td>
       <td data-label="Con nợ"><strong>${escapeHtml(entry.debtor)}</strong></td>
@@ -298,6 +320,26 @@ function renderDebtRow(entry, index) {
       </td>
     </tr>
   `;
+}
+
+function renderDebtSelection() {
+  const selectedCount = selectedDebtIds.size;
+  const selectedVisibleCount = visibleDebtEntryIds.filter((id) => selectedDebtIds.has(id)).length;
+  elements.debtBulkActions.hidden = selectedCount === 0;
+  elements.debtSelectionCount.textContent = `${selectedCount} khoản đã chọn`;
+  elements.debtSelectPage.disabled = visibleDebtEntryIds.length === 0;
+  elements.debtSelectPage.checked = visibleDebtEntryIds.length > 0
+    && selectedVisibleCount === visibleDebtEntryIds.length;
+  elements.debtSelectPage.indeterminate = selectedVisibleCount > 0
+    && selectedVisibleCount < visibleDebtEntryIds.length;
+}
+
+function focusDebtLedgerAfterBulkAction() {
+  window.setTimeout(() => {
+    const target = elements.debtList.querySelector(".debt-row-checkbox")
+      || elements.openManualDebtEmpty;
+    target.focus();
+  }, 0);
 }
 
 function renderDebtFilter(summary) {
@@ -329,6 +371,10 @@ function renderDebtYearFilter() {
 }
 
 function renderDebtLedger() {
+  const currentDebtIds = new Set(debtEntries.map(({ id }) => id));
+  selectedDebtIds.forEach((id) => {
+    if (!currentDebtIds.has(id)) selectedDebtIds.delete(id);
+  });
   renderDebtYearFilter();
   const yearEntries = filterDebtEntriesByYear(debtEntries, debtYearFilter);
   const summary = getDebtSummary(yearEntries);
@@ -338,6 +384,7 @@ function renderDebtLedger() {
     : yearEntries;
   const pagination = paginateDebtEntries(filteredEntries, debtPage, DEBT_PAGE_SIZE);
   debtPage = pagination.page;
+  visibleDebtEntryIds = pagination.items.map(({ id }) => id);
   const overview = getDebtOverview(yearEntries);
 
   elements.debtTotalUnpaid.textContent = formatMoney(overview.unpaidAmount);
@@ -359,6 +406,22 @@ function renderDebtLedger() {
   elements.debtEmpty.hidden = debtEntries.length > 0;
   elements.debtTableWrap.hidden = filteredEntries.length === 0;
   elements.debtFilterEmpty.hidden = debtEntries.length === 0 || filteredEntries.length > 0;
+  renderDebtSelection();
+}
+
+function updateSelectedDebtStatus(status) {
+  const selectedIds = [...selectedDebtIds];
+  if (!selectedIds.length) return;
+  try {
+    debtEntries = updateDebtStatuses(localStorage, selectedIds, status);
+  } catch {
+    elements.debtBulkFeedback.textContent = "Chưa thể cập nhật các khoản đã chọn. Hãy thử lại.";
+    return;
+  }
+  selectedDebtIds.clear();
+  elements.debtBulkFeedback.textContent = `Đã đánh dấu ${selectedIds.length} khoản là ${status === "paid" ? "đã trả" : "chưa trả"}.`;
+  renderDebtLedger();
+  focusDebtLedgerAfterBulkAction();
 }
 
 function exportDebtWorkbook() {
@@ -541,6 +604,11 @@ function openDeleteDialog(deleteRequest) {
       description: `${formatMoney(deleteRequest.amount)} sẽ bị xóa khỏi sổ tiền chia và không thể khôi phục.`,
       button: "Xóa khoản này",
     },
+    "debt-bulk": {
+      title: `Xóa ${deleteRequest.ids.length} khoản đã chọn?`,
+      description: `${formatMoney(deleteRequest.amount)} trong các khoản đã chọn sẽ bị xóa và không thể khôi phục.`,
+      button: `Xóa ${deleteRequest.ids.length} khoản`,
+    },
   }[deleteRequest.type];
   elements.deleteTitle.textContent = copy.title;
   elements.deleteDescription.textContent = copy.description;
@@ -603,6 +671,7 @@ elements.historyPageNext.addEventListener("click", () => {
 elements.debtFilter.addEventListener("change", (event) => {
   debtPersonFilter = event.target.value;
   debtPage = 1;
+  selectedDebtIds.clear();
   renderDebtLedger();
 });
 
@@ -622,6 +691,7 @@ elements.manualDebtAmount.addEventListener("input", formatManualDebtAmount);
 elements.debtYearFilter.addEventListener("change", (event) => {
   debtYearFilter = event.target.value;
   debtPage = 1;
+  selectedDebtIds.clear();
   renderDebtLedger();
 });
 
@@ -631,6 +701,7 @@ elements.debtSummaryList.addEventListener("click", (event) => {
   const selectedName = normalizeName(button.dataset.debtPerson);
   debtPersonFilter = debtPersonFilter === selectedName ? "" : selectedName;
   debtPage = 1;
+  selectedDebtIds.clear();
   renderDebtLedger();
 });
 
@@ -642,6 +713,37 @@ elements.debtPagePrev.addEventListener("click", () => {
 elements.debtPageNext.addEventListener("click", () => {
   debtPage += 1;
   renderDebtLedger();
+});
+
+elements.debtSelectPage.addEventListener("change", (event) => {
+  visibleDebtEntryIds.forEach((id) => {
+    if (event.target.checked) selectedDebtIds.add(id);
+    else selectedDebtIds.delete(id);
+  });
+  elements.debtBulkFeedback.textContent = "";
+  renderDebtLedger();
+});
+
+elements.debtList.addEventListener("change", (event) => {
+  const checkbox = event.target.closest("[data-select-debt-id]");
+  if (!checkbox) return;
+  if (checkbox.checked) selectedDebtIds.add(checkbox.dataset.selectDebtId);
+  else selectedDebtIds.delete(checkbox.dataset.selectDebtId);
+  checkbox.closest("tr")?.classList.toggle("is-selected", checkbox.checked);
+  elements.debtBulkFeedback.textContent = "";
+  renderDebtSelection();
+});
+
+elements.debtBulkMarkPaid.addEventListener("click", () => updateSelectedDebtStatus("paid"));
+elements.debtBulkMarkUnpaid.addEventListener("click", () => updateSelectedDebtStatus("unpaid"));
+elements.debtBulkDelete.addEventListener("click", () => {
+  const selectedEntries = debtEntries.filter(({ id }) => selectedDebtIds.has(id));
+  if (!selectedEntries.length) return;
+  openDeleteDialog({
+    type: "debt-bulk",
+    ids: selectedEntries.map(({ id }) => id),
+    amount: selectedEntries.reduce((total, { amount }) => total + amount, 0),
+  });
 });
 
 elements.debtList.addEventListener("click", (event) => {
@@ -675,6 +777,7 @@ elements.debtClearButton.addEventListener("click", () => {
 
 elements.confirmDelete.addEventListener("click", () => {
   if (!pendingDelete) return;
+  const restoreDebtFocus = pendingDelete.type === "debt-bulk";
   try {
     if (pendingDelete.type === "all") {
       records = clearStoredHistory(localStorage);
@@ -689,6 +792,10 @@ elements.confirmDelete.addEventListener("click", () => {
       debtEntries = clearStoredDebtEntries(localStorage);
     } else if (pendingDelete.type === "debt-entry") {
       debtEntries = removeDebtEntry(localStorage, pendingDelete.id);
+    } else if (pendingDelete.type === "debt-bulk") {
+      debtEntries = removeDebtEntries(localStorage, pendingDelete.ids);
+      selectedDebtIds.clear();
+      elements.debtBulkFeedback.textContent = `Đã xóa ${pendingDelete.ids.length} khoản đã chọn.`;
     }
   } catch {
     closeDeleteDialog();
@@ -698,6 +805,7 @@ elements.confirmDelete.addEventListener("click", () => {
   closeDeleteDialog();
   pendingDelete = null;
   renderHistory();
+  if (restoreDebtFocus) focusDebtLedgerAfterBulkAction();
 });
 
 window.addEventListener("storage", (event) => {

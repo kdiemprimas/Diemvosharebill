@@ -103,6 +103,13 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /id="debt-page-prev"/);
   assert.match(historyHtml, /id="debt-page-status"/);
   assert.match(historyHtml, /id="debt-page-next"/);
+  assert.match(historyHtml, /id="debt-select-page"[^>]+type="checkbox"/);
+  assert.match(historyHtml, /id="debt-bulk-actions"[^>]+hidden/);
+  assert.match(historyHtml, /id="debt-selection-count"[^>]+aria-live="polite"/);
+  assert.match(historyHtml, /id="debt-bulk-mark-paid"/);
+  assert.match(historyHtml, /id="debt-bulk-mark-unpaid"/);
+  assert.match(historyHtml, /id="debt-bulk-delete"/);
+  assert.match(historyHtml, /id="debt-bulk-feedback"[^>]+aria-live="polite"/);
   assert.match(historyHtml, /id="open-manual-debt"/);
   assert.match(historyHtml, /<dialog[^>]+id="manual-debt-dialog"/);
   assert.match(historyHtml, /id="manual-debt-creditor"[^>]+required/);
@@ -135,6 +142,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyApp, /formatDebtAmountInput/);
   assert.match(historyApp, /parseDebtAmountInput/);
   assert.match(historyApp, /upsertDebtEntries/);
+  assert.match(historyApp, /updateDebtStatuses/);
+  assert.match(historyApp, /removeDebtEntries/);
   const css = await readFile(join(outputDir, "styles.css"), "utf8");
   assert.match(css, /@keyframes melo-sing-across/);
   assert.match(css, /@keyframes melo-sing-frames/);

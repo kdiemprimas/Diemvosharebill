@@ -13,7 +13,9 @@ import {
   parseDebtEntries,
   parseDebtAmountInput,
   preserveDebtStatuses,
+  removeDebtEntries,
   removeDebtEntry,
+  updateDebtStatuses,
   updateDebtStatus,
   upsertDebtEntries,
 } from "./debt-ledger.js";
@@ -267,6 +269,50 @@ test("đổi trạng thái và xóa đúng một khoản đã lưu", () => {
 
   const remaining = removeDebtEntry(storage, "bill-1:2");
   assert.deepEqual(remaining.map(({ id }) => id), ["bill-1:1"]);
+});
+
+test("đổi trạng thái hàng loạt chỉ cho các khoản đã chọn", () => {
+  const storage = createMemoryStorage({
+    [DEBT_STORAGE_KEY]: JSON.stringify([
+      { id: "entry-1", billId: "bill-1", creditor: "Diem", debtor: "Tin", amount: 16000, date: "2026-08-18", status: "unpaid", savedAt: "2026-08-18T10:00:00Z" },
+      { id: "entry-2", billId: "bill-2", creditor: "Diem", debtor: "Son", amount: 35000, date: "2026-08-19", status: "unpaid", savedAt: "2026-08-19T10:00:00Z" },
+      { id: "entry-3", billId: "bill-3", creditor: "Diem", debtor: "An", amount: 38000, date: "2026-08-20", status: "paid", savedAt: "2026-08-20T10:00:00Z" },
+    ]),
+  });
+
+  const updated = updateDebtStatuses(storage, ["entry-1", "entry-3", "missing"], "paid");
+
+  assert.deepEqual(
+    updated.map(({ id, status }) => ({ id, status })),
+    [
+      { id: "entry-3", status: "paid" },
+      { id: "entry-2", status: "unpaid" },
+      { id: "entry-1", status: "paid" },
+    ],
+  );
+
+  const markedUnpaid = updateDebtStatuses(storage, ["entry-1", "entry-3"], "unpaid");
+  assert.deepEqual(markedUnpaid.map(({ status }) => status), ["unpaid", "unpaid", "unpaid"]);
+  assert.deepEqual(
+    updateDebtStatuses(storage, "entry-2", "paid").map(({ status }) => status),
+    ["unpaid", "unpaid", "unpaid"],
+  );
+});
+
+test("xóa hàng loạt các khoản đã chọn và bỏ qua mã không hợp lệ", () => {
+  const storage = createMemoryStorage({
+    [DEBT_STORAGE_KEY]: JSON.stringify([
+      { id: "entry-1", billId: "bill-1", creditor: "Diem", debtor: "Tin", amount: 16000, date: "2026-08-18", status: "unpaid", savedAt: "2026-08-18T10:00:00Z" },
+      { id: "entry-2", billId: "bill-2", creditor: "Diem", debtor: "Son", amount: 35000, date: "2026-08-19", status: "unpaid", savedAt: "2026-08-19T10:00:00Z" },
+      { id: "entry-3", billId: "bill-3", creditor: "Diem", debtor: "An", amount: 38000, date: "2026-08-20", status: "paid", savedAt: "2026-08-20T10:00:00Z" },
+    ]),
+  });
+
+  const remaining = removeDebtEntries(storage, ["entry-1", "entry-3", "", null]);
+
+  assert.deepEqual(remaining.map(({ id }) => id), ["entry-2"]);
+  assert.deepEqual(JSON.parse(storage.getItem(DEBT_STORAGE_KEY)).map(({ id }) => id), ["entry-2"]);
+  assert.deepEqual(removeDebtEntries(storage, "entry-2").map(({ id }) => id), ["entry-2"]);
 });
 
 test("lọc dữ liệu hỏng, tiền bằng 0 và chuẩn hóa trạng thái", () => {
