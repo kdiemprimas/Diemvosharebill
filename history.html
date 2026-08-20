@@ -126,7 +126,8 @@
             <div><dt>Số người</dt><dd id="debt-person-count">0</dd></div>
           </dl>
 
-          <div class="debt-summary-list" id="debt-summary-list" aria-label="Tổng tiền theo từng người"></div>
+          <div class="debt-summary-list" id="debt-summary-list" tabindex="0" aria-describedby="debt-summary-scroll-hint" role="region" aria-label="Tổng tiền theo từng người"></div>
+          <p class="debt-summary-scroll-hint" id="debt-summary-scroll-hint">Cuộn ngang để xem đầy đủ từng người.</p>
 
           <div class="debt-table-wrap" id="debt-table-wrap" hidden>
             <table class="debt-table">
@@ -261,7 +262,7 @@
           <datalist id="manual-debt-person-options"></datalist>
           <label class="field" for="manual-debt-amount">
             <span>Số tiền (₫) <b aria-hidden="true">*</b></span>
-            <input id="manual-debt-amount" type="number" min="1" step="1000" inputmode="numeric" placeholder="Ví dụ: 50000" required aria-required="true" aria-describedby="manual-debt-error" />
+            <input id="manual-debt-amount" type="text" inputmode="numeric" pattern="[0-9.]*" maxlength="19" autocomplete="off" placeholder="Ví dụ: 50.000" required aria-required="true" aria-describedby="manual-debt-error" />
           </label>
           <label class="field" for="manual-debt-date">
             <span>Ngày ghi nhận <b aria-hidden="true">*</b></span>

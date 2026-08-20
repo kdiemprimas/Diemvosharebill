@@ -12,10 +12,12 @@ import {
   clearDebtEntries as clearStoredDebtEntries,
   createManualDebtEntry,
   filterDebtEntriesByYear,
+  formatDebtAmountInput,
   getDebtOverview,
   getDebtSummary,
   getDebtYears,
   paginateDebtEntries,
+  parseDebtAmountInput,
   readDebtEntries,
   removeDebtEntry,
   updateDebtStatus,
@@ -142,6 +144,22 @@ function clearManualDebtErrors() {
   ].forEach((input) => input.removeAttribute("aria-invalid"));
 }
 
+function formatManualDebtAmount() {
+  const input = elements.manualDebtAmount;
+  const selectionStart = input.selectionStart ?? input.value.length;
+  const trailingDigitCount = input.value.slice(selectionStart).replace(/\D/g, "").length;
+  input.value = formatDebtAmountInput(input.value);
+
+  let caretPosition = input.value.length;
+  let remainingTrailingDigits = trailingDigitCount;
+  while (caretPosition > 0 && remainingTrailingDigits > 0) {
+    caretPosition -= 1;
+    if (/\d/.test(input.value[caretPosition])) remainingTrailingDigits -= 1;
+  }
+  input.setSelectionRange(caretPosition, caretPosition);
+  clearManualDebtErrors();
+}
+
 function showManualDebtError(message, input) {
   elements.manualDebtError.textContent = message;
   input?.setAttribute("aria-invalid", "true");
@@ -177,7 +195,7 @@ function saveManualDebt(event) {
   clearManualDebtErrors();
   const creditor = elements.manualDebtCreditor.value.trim();
   const debtor = elements.manualDebtDebtor.value.trim();
-  const amount = Number(elements.manualDebtAmount.value);
+  const amount = parseDebtAmountInput(elements.manualDebtAmount.value);
   const date = elements.manualDebtDate.value;
 
   if (!creditor) return showManualDebtError("Hãy nhập người đã ứng tiền.", elements.manualDebtCreditor);
@@ -549,9 +567,9 @@ elements.manualDebtForm.addEventListener("submit", saveManualDebt);
 [
   elements.manualDebtCreditor,
   elements.manualDebtDebtor,
-  elements.manualDebtAmount,
   elements.manualDebtDate,
 ].forEach((input) => input.addEventListener("input", clearManualDebtErrors));
+elements.manualDebtAmount.addEventListener("input", formatManualDebtAmount);
 
 elements.debtYearFilter.addEventListener("change", (event) => {
   debtYearFilter = event.target.value;

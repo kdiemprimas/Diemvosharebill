@@ -5,11 +5,13 @@ import {
   createDebtEntries,
   createManualDebtEntry,
   filterDebtEntriesByYear,
+  formatDebtAmountInput,
   getDebtOverview,
   getDebtSummary,
   getDebtYears,
   paginateDebtEntries,
   parseDebtEntries,
+  parseDebtAmountInput,
   preserveDebtStatuses,
   removeDebtEntry,
   updateDebtStatus,
@@ -62,6 +64,14 @@ test("tạo một khoản nợ nhập tay với thông tin đã được chuẩn
     status: "paid",
     savedAt: "2026-08-20T10:00:00.000Z",
   });
+});
+
+test("định dạng số tiền nhập tay bằng dấu chấm và đọc lại đúng giá trị", () => {
+  assert.equal(formatDebtAmountInput("200000"), "200.000");
+  assert.equal(formatDebtAmountInput("1.250.000"), "1.250.000");
+  assert.equal(formatDebtAmountInput("abc 001250000 đ"), "1.250.000");
+  assert.equal(formatDebtAmountInput(""), "");
+  assert.equal(parseDebtAmountInput("1.250.000"), 1250000);
 });
 
 test("không tạo khoản nhập tay thiếu dữ liệu hoặc có chủ nợ trùng người nợ", () => {

@@ -13,6 +13,18 @@ const cleanMoney = (value) => {
   return Number.isFinite(number) ? Math.max(0, Math.round(number)) : 0;
 };
 
+export function formatDebtAmountInput(value) {
+  const digits = String(value ?? "")
+    .replace(/\D/g, "")
+    .replace(/^0+(?=\d)/, "")
+    .slice(0, 15);
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+export function parseDebtAmountInput(value) {
+  return cleanMoney(value);
+}
+
 const normalizeNameKey = (value) => cleanText(value, 80).toLocaleLowerCase("vi-VN");
 
 function cleanDate(value) {

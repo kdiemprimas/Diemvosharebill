@@ -90,6 +90,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /id="history-page-next"/);
   assert.match(historyHtml, /id="debt-ledger-list"/);
   assert.match(historyHtml, /id="debt-summary-list"/);
+  assert.match(historyHtml, /id="debt-summary-list"[^>]+tabindex="0"[^>]+aria-describedby="debt-summary-scroll-hint"/);
+  assert.match(historyHtml, /id="debt-summary-scroll-hint"/);
   assert.match(historyHtml, /id="debt-person-filter"/);
   assert.match(historyHtml, /id="debt-year-filter"/);
   assert.match(historyHtml, /id="debt-total-paid"/);
@@ -101,7 +103,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /<dialog[^>]+id="manual-debt-dialog"/);
   assert.match(historyHtml, /id="manual-debt-creditor"[^>]+required/);
   assert.match(historyHtml, /id="manual-debt-debtor"[^>]+required/);
-  assert.match(historyHtml, /id="manual-debt-amount"[^>]+required/);
+  assert.match(historyHtml, /id="manual-debt-amount"[^>]+type="text"[^>]+inputmode="numeric"[^>]+required/);
   assert.match(historyHtml, /id="manual-debt-date"[^>]+required/);
   assert.match(historyHtml, /id="manual-debt-status"/);
   assert.match(historyHtml, /id="manual-debt-error"[^>]+role="alert"/);
@@ -124,6 +126,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyApp, /bill-history\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /debt-ledger\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /createManualDebtEntry/);
+  assert.match(historyApp, /formatDebtAmountInput/);
+  assert.match(historyApp, /parseDebtAmountInput/);
   assert.match(historyApp, /upsertDebtEntries/);
   const css = await readFile(join(outputDir, "styles.css"), "utf8");
   assert.match(css, /@keyframes melo-sing-across/);
@@ -158,6 +162,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(css, /\.history-pet-backdrop/);
   assert.match(css, /\.history-pet-teolaegi/);
   assert.match(css, /\.history-pet-melo/);
+  assert.match(css, /\.debt-summary-list\s*\{[^}]*overflow-x:\s*auto/);
+  assert.match(css, /\.debt-summary-card\s*\{[^}]*flex:\s*0 0/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /\.melo-performer[\s\S]*?pointer-events:\s*none/);
   assert.match(
