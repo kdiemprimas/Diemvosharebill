@@ -83,6 +83,10 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /id="debt-summary-list"/);
   assert.match(historyHtml, /id="debt-person-filter"/);
   assert.match(historyHtml, /id="debt-total-paid"/);
+  assert.match(historyHtml, /id="debt-pagination"/);
+  assert.match(historyHtml, /id="debt-page-prev"/);
+  assert.match(historyHtml, /id="debt-page-status"/);
+  assert.match(historyHtml, /id="debt-page-next"/);
   assert.match(historyHtml, /class="melo-performer"/);
   assert.match(historyHtml, /class="melo-sprite melo-sprite-running"/);
   assert.match(historyHtml, /class="melo-sprite melo-sprite-singing"/);

@@ -5,6 +5,7 @@ import {
   createDebtEntries,
   getDebtOverview,
   getDebtSummary,
+  paginateDebtEntries,
   parseDebtEntries,
   preserveDebtStatuses,
   removeDebtEntry,
@@ -143,6 +144,30 @@ test("tính riêng tổng tiền đã trả và chưa trả cho phần tổng qu
     unpaidCount: 1,
     peopleCount: 2,
   });
+});
+
+test("phân trang danh sách khoản tiền theo 10 dòng mỗi trang", () => {
+  const entries = Array.from({ length: 23 }, (_, index) => ({ id: `entry-${index + 1}` }));
+
+  const result = paginateDebtEntries(entries, 2, 10);
+
+  assert.deepEqual(result.items.map(({ id }) => id), [
+    "entry-11", "entry-12", "entry-13", "entry-14", "entry-15",
+    "entry-16", "entry-17", "entry-18", "entry-19", "entry-20",
+  ]);
+  assert.deepEqual(
+    { page: result.page, pageCount: result.pageCount, start: result.start, end: result.end, total: result.total },
+    { page: 2, pageCount: 3, start: 11, end: 20, total: 23 },
+  );
+});
+
+test("phân trang tự giới hạn trang vượt quá dữ liệu", () => {
+  const entries = Array.from({ length: 12 }, (_, index) => ({ id: `entry-${index + 1}` }));
+
+  const result = paginateDebtEntries(entries, 99, 10);
+
+  assert.equal(result.page, 2);
+  assert.deepEqual(result.items.map(({ id }) => id), ["entry-11", "entry-12"]);
 });
 
 test("đổi trạng thái và xóa đúng một khoản đã lưu", () => {

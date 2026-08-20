@@ -9,6 +9,7 @@ import {
   clearDebtEntries as clearStoredDebtEntries,
   getDebtOverview,
   getDebtSummary,
+  paginateDebtEntries,
   readDebtEntries,
   removeDebtEntry,
   updateDebtStatus,
@@ -40,11 +41,17 @@ const elements = {
   debtTotalPaid: document.querySelector("#debt-total-paid"),
   debtUnpaidCount: document.querySelector("#debt-unpaid-count"),
   debtPersonCount: document.querySelector("#debt-person-count"),
+  debtPagination: document.querySelector("#debt-pagination"),
+  debtPagePrev: document.querySelector("#debt-page-prev"),
+  debtPageStatus: document.querySelector("#debt-page-status"),
+  debtPageNext: document.querySelector("#debt-page-next"),
 };
 
+const DEBT_PAGE_SIZE = 10;
 let records = readHistory();
 let debtEntries = readDebtEntries();
 let debtPersonFilter = "";
+let debtPage = 1;
 let pendingDelete = null;
 
 const formatMoney = (value) => `${money.format(Math.round(value || 0))} ₫`;
@@ -77,9 +84,18 @@ function renderDebtSummaryCard(summary) {
       data-debt-person="${escapeHtml(summary.name)}"
       aria-pressed="${isActive}"
     >
-      <span>${escapeHtml(summary.name)}</span>
-      <strong>${formatMoney(summary.unpaidAmount)}</strong>
-      <small>${summary.unpaidCount} khoản chưa trả · ${summary.billCount} bill</small>
+      <span class="debt-summary-name">${escapeHtml(summary.name)}</span>
+      <span class="debt-summary-amounts">
+        <span class="debt-summary-amount debt-summary-unpaid">
+          <small>Còn nợ</small>
+          <strong>${formatMoney(summary.unpaidAmount)}</strong>
+        </span>
+        <span class="debt-summary-amount debt-summary-paid">
+          <small>Đã trả</small>
+          <strong>${formatMoney(summary.paidAmount)}</strong>
+        </span>
+      </span>
+      <small class="debt-summary-meta">${summary.unpaidCount} khoản chưa trả · ${summary.billCount} bill</small>
     </button>
   `;
 }
@@ -135,6 +151,8 @@ function renderDebtLedger() {
   const filteredEntries = debtPersonFilter
     ? debtEntries.filter(({ debtor }) => normalizeName(debtor) === debtPersonFilter)
     : debtEntries;
+  const pagination = paginateDebtEntries(filteredEntries, debtPage, DEBT_PAGE_SIZE);
+  debtPage = pagination.page;
   const overview = getDebtOverview(debtEntries);
 
   elements.debtTotalUnpaid.textContent = formatMoney(overview.unpaidAmount);
@@ -142,7 +160,15 @@ function renderDebtLedger() {
   elements.debtUnpaidCount.textContent = String(overview.unpaidCount);
   elements.debtPersonCount.textContent = String(overview.peopleCount);
   elements.debtSummaryList.innerHTML = summary.map(renderDebtSummaryCard).join("");
-  elements.debtList.innerHTML = filteredEntries.map(renderDebtRow).join("");
+  elements.debtList.innerHTML = pagination.items
+    .map((entry, index) => renderDebtRow(entry, pagination.start - 1 + index))
+    .join("");
+  elements.debtPagination.hidden = pagination.total <= DEBT_PAGE_SIZE;
+  elements.debtPagePrev.disabled = pagination.page <= 1;
+  elements.debtPageNext.disabled = pagination.page >= pagination.pageCount;
+  elements.debtPageStatus.textContent = pagination.total
+    ? `Trang ${pagination.page} / ${pagination.pageCount} · ${pagination.start}–${pagination.end} trên ${pagination.total} khoản`
+    : "Trang 1 / 1";
   elements.debtClearButton.hidden = debtEntries.length === 0;
   elements.debtEmpty.hidden = debtEntries.length > 0;
   elements.debtTableWrap.hidden = filteredEntries.length === 0;
@@ -285,6 +311,7 @@ elements.clearButton.addEventListener("click", () => {
 
 elements.debtFilter.addEventListener("change", (event) => {
   debtPersonFilter = event.target.value;
+  debtPage = 1;
   renderDebtLedger();
 });
 
@@ -293,6 +320,17 @@ elements.debtSummaryList.addEventListener("click", (event) => {
   if (!button) return;
   const selectedName = normalizeName(button.dataset.debtPerson);
   debtPersonFilter = debtPersonFilter === selectedName ? "" : selectedName;
+  debtPage = 1;
+  renderDebtLedger();
+});
+
+elements.debtPagePrev.addEventListener("click", () => {
+  debtPage -= 1;
+  renderDebtLedger();
+});
+
+elements.debtPageNext.addEventListener("click", () => {
+  debtPage += 1;
   renderDebtLedger();
 });
 

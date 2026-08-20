@@ -214,3 +214,24 @@ export function getDebtOverview(entries = []) {
     peopleCount: overview.people.size,
   };
 }
+
+export function paginateDebtEntries(entries = [], requestedPage = 1, requestedPageSize = 10) {
+  const items = Array.isArray(entries) ? entries : [];
+  const pageSize = Number.isInteger(requestedPageSize) && requestedPageSize > 0
+    ? Math.min(requestedPageSize, 100)
+    : 10;
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const numericPage = Number.isFinite(Number(requestedPage)) ? Math.trunc(Number(requestedPage)) : 1;
+  const page = Math.min(pageCount, Math.max(1, numericPage));
+  const startIndex = (page - 1) * pageSize;
+  const pageItems = items.slice(startIndex, startIndex + pageSize);
+  return {
+    items: pageItems,
+    page,
+    pageCount,
+    pageSize,
+    start: pageItems.length ? startIndex + 1 : 0,
+    end: startIndex + pageItems.length,
+    total: items.length,
+  };
+}
