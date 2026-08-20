@@ -13,6 +13,7 @@ const publicFiles = [
   "bill-calculator.js",
   "bill-ocr.js",
   "bill-history.js",
+  "debt-ledger.js",
 ];
 const imageAssets = [
   "assets/teolaegi-pet-logo.png",
@@ -67,9 +68,11 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
   const versionedApp = sourceContents[publicFiles.indexOf("app.js")]
     .replace("./bill-calculator.js", `./bill-calculator.js?v=${assetVersion}`)
     .replace("./bill-ocr.js", `./bill-ocr.js?v=${assetVersion}`)
-    .replace("./bill-history.js", `./bill-history.js?v=${assetVersion}`);
+    .replace("./bill-history.js", `./bill-history.js?v=${assetVersion}`)
+    .replace("./debt-ledger.js", `./debt-ledger.js?v=${assetVersion}`);
   const versionedHistoryApp = sourceContents[publicFiles.indexOf("history.js")]
-    .replace("./bill-history.js", `./bill-history.js?v=${assetVersion}`);
+    .replace("./bill-history.js", `./bill-history.js?v=${assetVersion}`)
+    .replace("./debt-ledger.js", `./debt-ledger.js?v=${assetVersion}`);
   await Promise.all([
     writeFile(join(target, "index.html"), versionedHtml, "utf8"),
     writeFile(join(target, "history.html"), versionedHistoryHtml, "utf8"),

@@ -20,6 +20,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
     "bill-calculator.js",
     "bill-ocr.js",
     "bill-history.js",
+    "debt-ledger.js",
     "assets/teolaegi-pet-logo.png",
     "assets/teolaegi-spritesheet.webp",
     "assets/melo-spritesheet.webp",
@@ -61,6 +62,10 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(html, /id="confirm-split"/);
   assert.match(html, /id="summary-review-pending"/);
   assert.match(html, /id="confirmed-summary"[^>]+hidden/);
+  assert.match(html, /id="open-save-debt"/);
+  assert.match(html, /id="save-debt-dialog"/);
+  assert.match(html, /id="debt-creditor"/);
+  assert.match(html, /id="confirm-save-debt"/);
   assert.match(html, /Chia đều tổng thanh toán/);
   assert.match(html, /Theo món đã gọi/);
   assert.match(html, /styles\.css\?v=[a-f0-9]{12}/);
@@ -68,11 +73,15 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(app, /bill-calculator\.js\?v=[a-f0-9]{12}/);
   assert.match(app, /bill-ocr\.js\?v=[a-f0-9]{12}/);
   assert.match(app, /bill-history\.js\?v=[a-f0-9]{12}/);
+  assert.match(app, /debt-ledger\.js\?v=[a-f0-9]{12}/);
   const historyHtml = await readFile(join(outputDir, "history.html"), "utf8");
   const historyApp = await readFile(join(outputDir, "history.js"), "utf8");
   assert.match(historyHtml, /<title>Lịch sử chia bill · Ai Ăn Nấy Trả<\/title>/);
   assert.match(historyHtml, /id="history-list"/);
   assert.match(historyHtml, /id="history-empty"/);
+  assert.match(historyHtml, /id="debt-ledger-list"/);
+  assert.match(historyHtml, /id="debt-summary-list"/);
+  assert.match(historyHtml, /id="debt-person-filter"/);
   assert.match(historyHtml, /class="melo-performer"/);
   assert.match(historyHtml, /class="melo-sprite melo-sprite-running"/);
   assert.match(historyHtml, /class="melo-sprite melo-sprite-singing"/);
@@ -90,6 +99,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /class="hero-action-sprite hero-action-melo-review"/);
   assert.match(historyHtml, /history\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /bill-history\.js\?v=[a-f0-9]{12}/);
+  assert.match(historyApp, /debt-ledger\.js\?v=[a-f0-9]{12}/);
   const css = await readFile(join(outputDir, "styles.css"), "utf8");
   assert.match(css, /@keyframes melo-sing-across/);
   assert.match(css, /@keyframes melo-sing-frames/);

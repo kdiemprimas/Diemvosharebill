@@ -325,7 +325,13 @@
                 <div class="grand-total"><dt>Tổng phải trả</dt><dd id="grand-total">0 ₫</dd></div>
               </dl>
               <p class="validation-message" id="validation-message" role="alert"></p>
-              <button class="copy-button" id="copy-result" type="button">Sao chép kết quả</button>
+              <div class="summary-actions">
+                <button class="save-debt-button" id="open-save-debt" type="button">
+                  Lưu vào sổ tiền chia
+                </button>
+                <button class="copy-button" id="copy-result" type="button">Sao chép kết quả</button>
+              </div>
+              <p class="debt-save-status" id="debt-save-status" aria-live="polite"></p>
             </div>
             <button class="reset-button" id="reset-bill" type="button">Tạo bill mới</button>
           </aside>
@@ -366,6 +372,63 @@
           </button>
           <button class="confirm-dialog-submit" id="confirm-reset-bill" type="button">
             Tạo bill mới
+          </button>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog
+      class="confirm-dialog save-debt-dialog"
+      id="save-debt-dialog"
+      aria-labelledby="save-debt-title"
+      aria-describedby="save-debt-description"
+    >
+      <div class="confirm-dialog-content save-debt-dialog-content">
+        <img
+          class="confirm-dialog-pet"
+          src="./assets/teolaegi-pet-logo.png"
+          width="72"
+          height="78"
+          alt=""
+          aria-hidden="true"
+        />
+        <div class="confirm-dialog-copy">
+          <span class="confirm-dialog-eyebrow">Sổ tiền chia</span>
+          <h2 id="save-debt-title">Lưu các khoản cần trả?</h2>
+          <p id="save-debt-description">
+            Chọn người đã thanh toán bill. Mỗi người còn lại sẽ được lưu thành một khoản riêng.
+          </p>
+        </div>
+        <div class="save-debt-form">
+          <label class="field">
+            <span>Chủ nợ / người đã trả bill</span>
+            <input id="debt-creditor" list="debt-creditor-options" maxlength="60" autocomplete="off" />
+            <datalist id="debt-creditor-options"></datalist>
+          </label>
+          <label class="field">
+            <span>Ngày ghi nhận</span>
+            <input id="debt-date" type="date" />
+          </label>
+          <label class="field save-debt-note-field">
+            <span>Ghi chú</span>
+            <input id="debt-note" maxlength="120" placeholder="Ví dụ: Cơm gà trưa thứ Sáu" />
+          </label>
+          <label class="field">
+            <span>Trạng thái ban đầu</span>
+            <select id="debt-status">
+              <option value="unpaid">Chưa trả</option>
+              <option value="paid">Đã trả</option>
+            </select>
+          </label>
+        </div>
+        <div class="save-debt-preview" id="save-debt-preview" aria-live="polite"></div>
+        <p class="save-debt-error" id="save-debt-error" role="alert"></p>
+        <form class="confirm-dialog-actions" method="dialog">
+          <button class="confirm-dialog-cancel" type="submit" value="cancel">
+            Để sau
+          </button>
+          <button class="confirm-dialog-submit" id="confirm-save-debt" type="button">
+            Lưu các khoản
           </button>
         </form>
       </div>

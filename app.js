@@ -1,6 +1,12 @@
 import { calculateBill, calculateEqualSplit } from "./bill-calculator.js";
 import { createHistoryRecord, upsertHistoryRecord } from "./bill-history.js";
 import {
+  createDebtEntries,
+  preserveDebtStatuses,
+  readDebtEntries,
+  upsertDebtEntries,
+} from "./debt-ledger.js";
+import {
   buildStructuredOcrText,
   findTemporaryTotalRows,
   mergeOcrPageTexts,
@@ -87,6 +93,17 @@ const elements = {
   reviewPending: document.querySelector("#summary-review-pending"),
   reviewMessage: document.querySelector("#summary-review-message"),
   resetDialog: document.querySelector("#reset-confirm-dialog"),
+  openSaveDebt: document.querySelector("#open-save-debt"),
+  saveDebtDialog: document.querySelector("#save-debt-dialog"),
+  debtCreditor: document.querySelector("#debt-creditor"),
+  debtCreditorOptions: document.querySelector("#debt-creditor-options"),
+  debtDate: document.querySelector("#debt-date"),
+  debtNote: document.querySelector("#debt-note"),
+  debtStatus: document.querySelector("#debt-status"),
+  saveDebtPreview: document.querySelector("#save-debt-preview"),
+  saveDebtError: document.querySelector("#save-debt-error"),
+  confirmSaveDebt: document.querySelector("#confirm-save-debt"),
+  debtSaveStatus: document.querySelector("#debt-save-status"),
 };
 
 const money = new Intl.NumberFormat("vi-VN");
@@ -107,6 +124,17 @@ function setDirty() {
 function invalidateSplitConfirmation() {
   if (isSplitConfirmed) splitChangedAfterConfirmation = true;
   isSplitConfirmed = false;
+  elements.debtSaveStatus.textContent = "";
+}
+
+function clearDebtDraftForm() {
+  elements.debtCreditor.value = "";
+  elements.debtDate.value = "";
+  elements.debtNote.value = "";
+  elements.debtStatus.value = "unpaid";
+  elements.saveDebtError.textContent = "";
+  elements.saveDebtPreview.textContent = "";
+  elements.debtSaveStatus.textContent = "";
 }
 
 function updateStateAndSummary() {
@@ -410,6 +438,7 @@ function applyOcrBill({ scroll = true } = {}) {
   const peopleByName = new Map(people.map((person) => [person.name, person.id]));
 
   state.historyRecordId = "";
+  clearDebtDraftForm();
   state.people = people;
   state.items = parsedOcrBill.items.map((item) => ({
     id: crypto.randomUUID(),
@@ -527,6 +556,9 @@ function renderSummary() {
   const bill = getCalculatedBill();
   const isEqualSplit = state.splitMode === "equal";
   elements.confirmedSummary.hidden = !isSplitConfirmed;
+  elements.openSaveDebt.textContent = state.historyRecordId
+    ? "Cập nhật sổ tiền chia"
+    : "Lưu vào sổ tiền chia";
   elements.reviewPending.hidden = isSplitConfirmed;
   if (!isSplitConfirmed) {
     elements.reviewMessage.textContent = splitChangedAfterConfirmation
@@ -654,28 +686,126 @@ function confirmSplit() {
 
   isSplitConfirmed = true;
   splitChangedAfterConfirmation = false;
-  const bill = getCalculatedBill();
-  const recordId = state.historyRecordId || crypto.randomUUID();
-  const historyRecord = createHistoryRecord({
-    id: recordId,
-    confirmedAt: new Date().toISOString(),
-    state,
-    bill,
+  renderSummary();
+  document.querySelector(".summary-card").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function getLocalToday() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60 * 1000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function getDebtDateFromOrder() {
+  const match = String(state.orderDate || "").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!match) return getLocalToday();
+  const [, day, month, year] = match;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
+function getDebtDraft(recordId = state.historyRecordId || "preview") {
+  return createDebtEntries({
+    billId: recordId,
+    savedAt: new Date().toISOString(),
+    creditor: elements.debtCreditor.value.trim(),
+    date: elements.debtDate.value,
+    note: elements.debtNote.value.trim(),
+    status: elements.debtStatus.value,
+    bill: getCalculatedBill(),
   });
-  let historySaved = false;
+}
+
+function getSavedDebtEntries() {
+  if (!state.historyRecordId) return [];
+  return readDebtEntries(localStorage).filter(({ billId }) => billId === state.historyRecordId);
+}
+
+function renderDebtPreview() {
+  const entries = getDebtDraft();
+  const total = entries.reduce((sum, entry) => sum + entry.amount, 0);
+  if (!elements.debtCreditor.value.trim()) {
+    elements.saveDebtPreview.textContent = "Nhập tên người đã thanh toán để xem các khoản sẽ lưu.";
+    return;
+  }
+  if (!entries.length) {
+    elements.saveDebtPreview.textContent = "Không có người nào khác cần trả khoản tiền này.";
+    return;
+  }
+  elements.saveDebtPreview.innerHTML = `<strong>${entries.length} khoản</strong> sẽ được lưu, tổng cộng <strong>${formatMoney(total)}</strong>.`;
+}
+
+function openSaveDebtDialog() {
+  if (!isSplitConfirmed) return;
+  elements.debtCreditorOptions.innerHTML = state.people
+    .filter(({ name }) => name?.trim())
+    .map(({ name }) => `<option value="${escapeHtml(name.trim())}"></option>`)
+    .join("");
+  const savedEntries = getSavedDebtEntries();
+  if (savedEntries.length) {
+    elements.debtCreditor.value = savedEntries[0].creditor;
+    elements.debtDate.value = savedEntries[0].date;
+    elements.debtNote.value = savedEntries[0].note;
+  } else if (!elements.debtCreditor.value.trim()) {
+    elements.debtCreditor.value = state.people[0]?.name?.trim() || "";
+  }
+  elements.debtDate.value ||= getDebtDateFromOrder();
+  elements.debtNote.value ||= state.billName.trim();
+  elements.debtStatus.value ||= "unpaid";
+  elements.saveDebtError.textContent = "";
+  renderDebtPreview();
+  if (typeof elements.saveDebtDialog.showModal === "function") {
+    elements.saveDebtDialog.showModal();
+  } else {
+    elements.saveDebtDialog.setAttribute("open", "");
+  }
+  window.setTimeout(() => elements.debtCreditor.focus(), 0);
+}
+
+function closeSaveDebtDialog() {
+  if (typeof elements.saveDebtDialog.close === "function") {
+    elements.saveDebtDialog.close();
+  } else {
+    elements.saveDebtDialog.removeAttribute("open");
+  }
+}
+
+function saveDebtLedger() {
+  const creditor = elements.debtCreditor.value.trim();
+  if (!creditor) {
+    elements.saveDebtError.textContent = "Hãy nhập người đã thanh toán bill.";
+    elements.debtCreditor.focus();
+    return;
+  }
+  if (!elements.debtDate.value) {
+    elements.saveDebtError.textContent = "Hãy chọn ngày ghi nhận khoản tiền.";
+    elements.debtDate.focus();
+    return;
+  }
+
+  const recordId = state.historyRecordId || crypto.randomUUID();
+  const bill = getCalculatedBill();
+  let entries = getDebtDraft(recordId);
+  if (!entries.length) {
+    elements.saveDebtError.textContent = "Không có khoản nào cần lưu. Hãy kiểm tra lại người đã thanh toán.";
+    return;
+  }
+  entries = preserveDebtStatuses(entries, getSavedDebtEntries());
+
+  const confirmedAt = new Date().toISOString();
+  const historyRecord = createHistoryRecord({ id: recordId, confirmedAt, state, bill });
   try {
+    upsertDebtEntries(localStorage, recordId, entries);
     upsertHistoryRecord(localStorage, historyRecord);
     state.historyRecordId = recordId;
     persist();
-    historySaved = true;
   } catch {
-    // The split result should remain usable when browser storage is unavailable.
+    elements.saveDebtError.textContent = "Trình duyệt chưa thể lưu dữ liệu. Hãy kiểm tra quyền lưu trữ rồi thử lại.";
+    return;
   }
+
+  closeSaveDebtDialog();
   renderSummary();
-  if (!historySaved && !elements.validation.textContent) {
-    elements.validation.textContent = "Đã chia bill nhưng chưa thể lưu vào lịch sử trên thiết bị này.";
-  }
-  document.querySelector(".summary-card").scrollIntoView({ behavior: "smooth", block: "start" });
+  elements.debtSaveStatus.innerHTML = `Đã lưu ${entries.length} khoản. <a href="./history.html#debt-ledger">Xem sổ tiền chia</a>`;
 }
 
 function openResetDialog() {
@@ -696,6 +826,8 @@ function closeResetDialog() {
 
 function resetBill() {
   closeResetDialog();
+  closeSaveDebtDialog();
+  clearDebtDraftForm();
   removeBillImage();
   state = defaultState();
   isSplitConfirmed = false;
@@ -756,6 +888,14 @@ document.querySelector("#add-item").addEventListener("click", () => {
 });
 document.querySelector("#copy-result").addEventListener("click", copyResult);
 elements.confirmSplitButton.addEventListener("click", confirmSplit);
+elements.openSaveDebt.addEventListener("click", openSaveDebtDialog);
+elements.confirmSaveDebt.addEventListener("click", saveDebtLedger);
+[elements.debtCreditor, elements.debtDate, elements.debtNote, elements.debtStatus].forEach((input) => {
+  input.addEventListener("input", () => {
+    elements.saveDebtError.textContent = "";
+    renderDebtPreview();
+  });
+});
 document.querySelector("#reset-bill").addEventListener("click", openResetDialog);
 document.querySelector("#confirm-reset-bill").addEventListener("click", resetBill);
 elements.imageInput.addEventListener("change", (event) => selectBillImages(event.target.files));

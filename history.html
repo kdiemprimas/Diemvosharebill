@@ -59,7 +59,7 @@
             <p class="eyebrow">Những lần đã chia</p>
             <h1 class="history-title"><span class="history-title-main">Lịch sử</span><span class="history-title-accent">chia bill.</span></h1>
             <p class="hero-copy">
-              Mỗi bill được lưu sau khi bạn xác nhận chia. Dữ liệu chỉ nằm trên thiết bị này.
+              Bill và các khoản cần trả chỉ được lưu khi bạn chủ động chọn lưu. Dữ liệu chỉ nằm trên thiết bị này.
             </p>
           </div>
           <div class="history-pet-scene">
@@ -90,6 +90,60 @@
           </div>
         </section>
 
+        <section class="history-section debt-ledger-section" id="debt-ledger" aria-labelledby="debt-ledger-heading">
+          <div class="history-section-heading debt-ledger-heading">
+            <div>
+              <p class="eyebrow">Theo dõi qua nhiều ngày</p>
+              <h2 id="debt-ledger-heading">Sổ tiền chia theo người</h2>
+              <p class="debt-ledger-intro">Cộng dồn các khoản chưa trả của từng người từ những bill bạn đã chọn lưu.</p>
+            </div>
+            <div class="debt-ledger-controls">
+              <label class="debt-person-filter-label" for="debt-person-filter">
+                <span>Lọc theo người</span>
+                <select id="debt-person-filter">
+                  <option value="">Tất cả mọi người</option>
+                </select>
+              </label>
+              <button class="history-clear-button" id="clear-debt-ledger" type="button" hidden>
+                Xóa sổ tiền chia
+              </button>
+            </div>
+          </div>
+
+          <dl class="debt-overview" aria-label="Tổng quan sổ tiền chia">
+            <div><dt>Tổng chưa trả</dt><dd id="debt-total-unpaid">0 ₫</dd></div>
+            <div><dt>Khoản chưa trả</dt><dd id="debt-unpaid-count">0</dd></div>
+            <div><dt>Số người</dt><dd id="debt-person-count">0</dd></div>
+          </dl>
+
+          <div class="debt-summary-list" id="debt-summary-list" aria-label="Tổng tiền theo từng người"></div>
+
+          <div class="debt-table-wrap" id="debt-table-wrap" hidden>
+            <table class="debt-table">
+              <caption class="visually-hidden">Danh sách các khoản tiền đã lưu theo từng người</caption>
+              <thead>
+                <tr>
+                  <th scope="col">STT</th>
+                  <th scope="col">Chủ nợ</th>
+                  <th scope="col">Con nợ</th>
+                  <th scope="col">Tiền</th>
+                  <th scope="col">Ngày</th>
+                  <th scope="col">Ghi chú</th>
+                  <th scope="col">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody id="debt-ledger-list"></tbody>
+            </table>
+          </div>
+
+          <div class="debt-ledger-empty" id="debt-ledger-empty">
+            <strong>Chưa có khoản tiền nào được lưu</strong>
+            <p>Sau khi chia xong, chọn “Lưu vào sổ tiền chia” ở phần kết quả.</p>
+            <a href="./index.html">Chia một bill mới</a>
+          </div>
+          <p class="debt-filter-empty" id="debt-filter-empty" hidden>Không có khoản nào của người này.</p>
+        </section>
+
         <section class="history-section" aria-labelledby="history-heading">
           <div class="history-section-heading">
             <div>
@@ -112,7 +166,7 @@
               aria-hidden="true"
             />
             <h2>Chưa có bill nào trong lịch sử</h2>
-            <p>Sau khi kiểm tra và xác nhận chia bill, kết quả sẽ xuất hiện tại đây.</p>
+            <p>Sau khi kiểm tra kết quả và chủ động lưu, bill sẽ xuất hiện tại đây.</p>
             <a href="./index.html">Bắt đầu chia bill</a>
           </div>
         </section>
