@@ -31,6 +31,7 @@ import {
   createDebtWorkbook,
   createDebtWorkbookFilename,
   getDebtExportEntries,
+  getDebtReportPeriodLabel,
 } from "./debt-export.js";
 
 const money = new Intl.NumberFormat("vi-VN");
@@ -529,7 +530,7 @@ function drawPersonDebtReport(report) {
   context.fillText(fitCanvasText(context, report.personName, 880), 100, 200);
   context.fillStyle = "#7b706d";
   context.font = "500 26px system-ui, sans-serif";
-  context.fillText(report.year ? `Các khoản trong năm ${report.year}` : "Các khoản trong tất cả thời gian", 100, 248);
+  context.fillText(getDebtReportPeriodLabel(report.year), 100, 248);
 
   drawRoundedRect(context, 100, 300, 880, 300, 36, report.totalUnpaid ? "#fae5e2" : "#deeee7");
   context.fillStyle = report.totalUnpaid ? "#a54e54" : "#3f7168";

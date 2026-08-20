@@ -7,7 +7,13 @@ import {
   createDebtWorkbook,
   createDebtWorkbookFilename,
   getDebtExportEntries,
+  getDebtReportPeriodLabel,
 } from "./debt-export.js";
+
+test("dùng câu nhắc vui khi báo cáo không lọc theo năm", () => {
+  assert.equal(getDebtReportPeriodLabel(""), "Một là trả tiền, Hai là đi tò");
+  assert.equal(getDebtReportPeriodLabel("2026"), "Các khoản trong năm 2026");
+});
 
 test("tạo báo cáo còn nợ của đúng một người và cộng theo từng chủ nợ", () => {
   const entries = [

@@ -200,6 +200,13 @@ export function getDebtExportEntries(entries = [], personFilter = "", yearFilter
   });
 }
 
+export function getDebtReportPeriodLabel(year = "") {
+  const selectedYear = String(year || "").trim();
+  return /^\d{4}$/.test(selectedYear)
+    ? `Các khoản trong năm ${selectedYear}`
+    : "Một là trả tiền, Hai là đi tò";
+}
+
 export function createPersonDebtReport(
   entries = [],
   personFilter = "",
