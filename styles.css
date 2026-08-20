@@ -393,6 +393,20 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .history-section-heading h2 { font-size: 27px; }
 .history-clear-button { padding: 10px 14px; color: var(--accent-dark); background: transparent; border: 1px solid rgba(185, 86, 88, 0.28); border-radius: 10px; cursor: pointer; font-size: 10px; font-weight: 800; }
 .history-clear-button:hover { background: var(--blush); }
+.history-list-heading { align-items: flex-start; }
+.history-list-controls { display: flex; align-items: flex-end; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+.history-date-filter { position: relative; display: grid; grid-template-columns: repeat(2, minmax(126px, 1fr)) auto; gap: 8px; min-width: 360px; margin: 0; padding: 19px 0 0; border: 0; }
+.history-date-filter legend { position: absolute; top: 0; left: 0; padding: 0; color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.history-date-filter label { display: grid; gap: 5px; color: var(--muted); font-size: 8px; font-weight: 700; }
+.history-date-filter input { width: 100%; min-height: 36px; padding: 7px 9px; color: var(--ink); background: #fffdf9; border: 1px solid rgba(126, 119, 116, 0.18); border-radius: 9px; font: inherit; font-size: 9px; }
+.history-date-filter input:focus-visible { outline: 3px solid rgba(225, 123, 102, 0.3); outline-offset: 2px; }
+.history-date-filter input:disabled { cursor: not-allowed; opacity: 0.5; }
+.history-date-clear { align-self: end; min-height: 36px; padding: 7px 10px; color: var(--blue); background: var(--powder-blue); border: 0; border-radius: 9px; cursor: pointer; font-size: 8px; font-weight: 800; white-space: nowrap; }
+.history-date-clear:hover { background: #d6e9eb; }
+.history-date-clear:focus-visible { outline: 3px solid rgba(85, 127, 142, 0.32); outline-offset: 2px; }
+.history-date-filter small { grid-column: 1 / -1; color: var(--muted); font-size: 7px; }
+.history-date-error { grid-column: 1 / -1; margin: 0; color: var(--accent-dark); font-size: 8px; font-weight: 700; }
+.history-date-filter input[aria-invalid="true"] { border-color: rgba(185, 86, 88, 0.58); background: #fff7f5; }
 .debt-ledger-intro { max-width: 570px; margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.65; }
 .debt-ledger-heading { align-items: flex-start; }
 .debt-ledger-controls { display: flex; align-items: end; gap: 10px; }
@@ -432,13 +446,13 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .debt-empty-note { color: #a99d98; font-style: italic; }
 .debt-row-actions { display: flex; align-items: center; gap: 6px; }
 .debt-status-button, .debt-delete-button { min-height: 30px; padding: 6px 9px; border-radius: 999px; cursor: pointer; font-size: 8px; font-weight: 800; white-space: nowrap; }
-.debt-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 9px; margin-top: 13px; }
-.debt-pagination[hidden] { display: none; }
-.debt-pagination p { min-width: 178px; margin: 0; color: var(--muted); font-size: 9px; font-weight: 700; text-align: center; }
-.debt-pagination button { display: inline-grid; min-width: 36px; min-height: 36px; place-items: center; color: var(--ink); background: #fffdf9; border: 1px solid rgba(85, 127, 142, 0.28); border-radius: 10px; cursor: pointer; font-size: 15px; }
-.debt-pagination button:hover:not(:disabled) { color: #fff; background: var(--blue); transform: translateY(-1px); }
-.debt-pagination button:disabled { cursor: not-allowed; opacity: 0.42; }
-.debt-pagination button:focus-visible { outline: 3px solid rgba(225, 123, 102, 0.34); outline-offset: 2px; }
+.debt-pagination, .history-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 9px; margin-top: 13px; }
+.debt-pagination[hidden], .history-pagination[hidden] { display: none; }
+.debt-pagination p, .history-pagination p { min-width: 178px; margin: 0; color: var(--muted); font-size: 9px; font-weight: 700; text-align: center; }
+.debt-pagination button, .history-pagination button { display: inline-grid; min-width: 36px; min-height: 36px; place-items: center; color: var(--ink); background: #fffdf9; border: 1px solid rgba(85, 127, 142, 0.28); border-radius: 10px; cursor: pointer; font-size: 15px; }
+.debt-pagination button:hover:not(:disabled), .history-pagination button:hover:not(:disabled) { color: #fff; background: var(--blue); transform: translateY(-1px); }
+.debt-pagination button:disabled, .history-pagination button:disabled { cursor: not-allowed; opacity: 0.42; }
+.debt-pagination button:focus-visible, .history-pagination button:focus-visible { outline: 3px solid rgba(225, 123, 102, 0.34); outline-offset: 2px; }
 .debt-status-button.is-unpaid { color: #a54e54; background: #fae5e2; border: 1px solid rgba(185, 86, 88, 0.22); }
 .debt-status-button.is-paid { color: #3f7168; background: #deeee7; border: 1px solid rgba(69, 121, 105, 0.2); }
 .debt-delete-button { color: var(--muted); background: transparent; border: 1px solid rgba(126, 119, 116, 0.18); }
@@ -449,6 +463,12 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .debt-ledger-empty a { display: inline-flex; padding: 9px 12px; color: #fffaf3; background: var(--accent-dark); border-radius: 9px; font-size: 9px; font-weight: 800; text-decoration: none; }
 .debt-filter-empty { margin: 0; font-size: 10px; }
 .history-list { display: grid; gap: 16px; }
+.history-filter-empty { display: grid; min-height: 220px; justify-items: center; align-content: center; padding: 30px 20px; color: var(--muted); text-align: center; background: rgba(255, 253, 249, 0.68); border: 1px dashed rgba(126, 119, 116, 0.22); border-radius: 16px; }
+.history-filter-empty[hidden] { display: none; }
+.history-filter-empty strong { color: var(--ink); font-size: 15px; }
+.history-filter-empty p { margin: 8px 0 15px; font-size: 10px; }
+.history-filter-empty button { min-height: 36px; padding: 8px 13px; color: #fffaf3; background: var(--accent-dark); border: 0; border-radius: 9px; cursor: pointer; font-size: 9px; font-weight: 800; }
+.history-filter-empty button:focus-visible { outline: 3px solid rgba(225, 123, 102, 0.34); outline-offset: 2px; }
 .history-card { padding: 23px; background: #fffdf9; border: 1px solid rgba(223, 206, 199, 0.78); border-radius: 17px; box-shadow: 0 8px 24px rgba(92, 72, 67, 0.06); }
 .history-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .history-platform { display: inline-flex; padding: 5px 8px; color: #557f8e; background: var(--powder-blue); border-radius: 999px; font-size: 8px; font-weight: 800; text-transform: uppercase; }
@@ -569,6 +589,9 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
   .history-section-heading { align-items: flex-start; }
   .history-section-heading h2 { font-size: 22px; }
   .history-clear-button { max-width: 110px; }
+  .history-list-heading { display: grid; }
+  .history-list-controls { width: 100%; justify-content: space-between; }
+  .history-date-filter { flex: 1; min-width: 0; }
   .debt-ledger-heading { display: grid; }
   .debt-ledger-controls { width: 100%; align-items: end; justify-content: space-between; }
   .debt-person-filter-label { min-width: 0; flex: 1; }
@@ -584,7 +607,7 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
   .debt-table td::before { color: var(--muted); content: attr(data-label); font-size: 8px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
   .debt-table td:last-child { border-bottom: 0; }
   .debt-row-actions { flex-wrap: wrap; }
-  .debt-pagination { justify-content: center; }
+  .debt-pagination, .history-pagination { justify-content: center; }
   .history-card { padding: 17px 14px; }
   .history-card-stats { grid-template-columns: 1fr 1fr; }
   .history-card-stats .history-total-stat { grid-column: 1 / 3; }
@@ -596,9 +619,13 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
   .debt-ledger-controls { display: grid; }
   .debt-ledger-controls .history-clear-button { max-width: none; }
   .debt-summary-list { grid-template-columns: 1fr; }
-  .debt-pagination { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; }
-  .debt-pagination[hidden] { display: none; }
-  .debt-pagination p { min-width: 0; }
+  .debt-pagination, .history-pagination { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; }
+  .debt-pagination[hidden], .history-pagination[hidden] { display: none; }
+  .debt-pagination p, .history-pagination p { min-width: 0; }
+  .history-list-controls { display: grid; }
+  .history-date-filter { width: 100%; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .history-date-clear { grid-column: 1 / -1; }
+  .history-list-controls > .history-clear-button { width: 100%; max-width: none; }
   .save-debt-dialog-content { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .save-debt-dialog-content .confirm-dialog-copy { margin-top: 8px; }
   .save-debt-dialog-content .confirm-dialog-copy p { margin-inline: auto; }

@@ -79,6 +79,15 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /<title>Lịch sử chia bill · Ai Ăn Nấy Trả<\/title>/);
   assert.match(historyHtml, /id="history-list"/);
   assert.match(historyHtml, /id="history-empty"/);
+  assert.match(historyHtml, /id="history-date-from"/);
+  assert.match(historyHtml, /id="history-date-to"/);
+  assert.match(historyHtml, /id="history-date-clear"/);
+  assert.match(historyHtml, /id="history-date-error"/);
+  assert.match(historyHtml, /id="history-filter-empty"/);
+  assert.match(historyHtml, /id="history-pagination"/);
+  assert.match(historyHtml, /id="history-page-prev"/);
+  assert.match(historyHtml, /id="history-page-status"/);
+  assert.match(historyHtml, /id="history-page-next"/);
   assert.match(historyHtml, /id="debt-ledger-list"/);
   assert.match(historyHtml, /id="debt-summary-list"/);
   assert.match(historyHtml, /id="debt-person-filter"/);

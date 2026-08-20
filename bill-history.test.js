@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createHistoryRecord,
+  filterHistoryByDateRange,
+  isHistoryDateRangeValid,
+  paginateHistoryRecords,
   parseHistory,
   removeHistoryRecord,
   upsertHistoryRecord,
@@ -135,3 +138,44 @@ test("xóa đúng bill được chọn khỏi lịch sử", () => {
   assert.deepEqual(records.map(({ id }) => id), ["history-1"]);
 });
 
+test("lọc bill theo khoảng ngày đặt và tính cả hai ngày biên", () => {
+  const records = [
+    { id: "history-1", orderDate: "14:03 · 10/07/2026", confirmedAt: "2026-08-20T10:00:00.000Z" },
+    { id: "history-2", orderDate: "15/07/2026", confirmedAt: "2026-08-20T10:00:00.000Z" },
+    { id: "history-3", orderDate: "20/07/2026", confirmedAt: "2026-08-20T10:00:00.000Z" },
+    { id: "history-4", orderDate: "21/07/2026", confirmedAt: "2026-08-20T10:00:00.000Z" },
+  ];
+
+  const result = filterHistoryByDateRange(records, "2026-07-10", "2026-07-20");
+
+  assert.deepEqual(result.map(({ id }) => id), ["history-1", "history-2", "history-3"]);
+});
+
+test("bill thiếu ngày đặt sẽ được lọc theo ngày đã lưu", () => {
+  const records = [
+    { id: "history-1", orderDate: "", confirmedAt: "2026-08-20T10:00:00.000Z" },
+    { id: "history-2", orderDate: "không rõ", confirmedAt: "2026-08-19T10:00:00.000Z" },
+  ];
+
+  const result = filterHistoryByDateRange(records, "2026-08-20", "2026-08-20");
+
+  assert.deepEqual(result.map(({ id }) => id), ["history-1"]);
+});
+
+test("phát hiện khoảng ngày có ngày bắt đầu sau ngày kết thúc", () => {
+  assert.equal(isHistoryDateRangeValid("2026-08-30", "2026-08-07"), false);
+  assert.equal(isHistoryDateRangeValid("2026-08-07", "2026-08-07"), true);
+  assert.equal(isHistoryDateRangeValid("2026-08-07", ""), true);
+});
+
+test("phân trang lịch sử theo 5 bill mỗi trang", () => {
+  const records = Array.from({ length: 12 }, (_, index) => ({ id: `history-${index + 1}` }));
+
+  const result = paginateHistoryRecords(records, 3, 5);
+
+  assert.deepEqual(result.items.map(({ id }) => id), ["history-11", "history-12"]);
+  assert.deepEqual(
+    { page: result.page, pageCount: result.pageCount, start: result.start, end: result.end, total: result.total },
+    { page: 3, pageCount: 3, start: 11, end: 12, total: 12 },
+  );
+});

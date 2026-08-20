@@ -152,17 +152,49 @@
         </section>
 
         <section class="history-section" aria-labelledby="history-heading">
-          <div class="history-section-heading">
+          <div class="history-section-heading history-list-heading">
             <div>
               <p class="eyebrow">Gần đây nhất</p>
               <h2 id="history-heading">Các bill đã chia</h2>
             </div>
-            <button class="history-clear-button" id="clear-history" type="button" hidden>
-              Xóa toàn bộ lịch sử
-            </button>
+            <div class="history-list-controls">
+              <fieldset class="history-date-filter">
+                <legend>Lọc theo ngày đặt</legend>
+                <label for="history-date-from">
+                  <span>Từ ngày</span>
+                  <input id="history-date-from" type="date" aria-describedby="history-date-hint history-date-error" />
+                </label>
+                <label for="history-date-to">
+                  <span>Đến ngày</span>
+                  <input id="history-date-to" type="date" aria-describedby="history-date-hint history-date-error" />
+                </label>
+                <button class="history-date-clear" id="history-date-clear" type="button" hidden>
+                  Xóa lọc
+                </button>
+                <small id="history-date-hint">Bill thiếu ngày đặt sẽ dùng ngày đã lưu.</small>
+                <p class="history-date-error" id="history-date-error" role="alert" hidden>
+                  “Từ ngày” cần sớm hơn hoặc bằng “Đến ngày”.
+                </p>
+              </fieldset>
+              <button class="history-clear-button" id="clear-history" type="button" hidden>
+                Xóa toàn bộ lịch sử
+              </button>
+            </div>
           </div>
 
           <div class="history-list" id="history-list"></div>
+
+          <nav class="history-pagination" id="history-pagination" aria-label="Phân trang lịch sử bill" hidden>
+            <button id="history-page-prev" type="button" aria-label="Xem trang bill trước">←</button>
+            <p id="history-page-status" aria-live="polite">Trang 1 / 1</p>
+            <button id="history-page-next" type="button" aria-label="Xem trang bill tiếp theo">→</button>
+          </nav>
+
+          <div class="history-filter-empty" id="history-filter-empty" hidden>
+            <strong>Không có bill trong khoảng ngày này</strong>
+            <p>Hãy đổi khoảng ngày hoặc xem lại toàn bộ lịch sử.</p>
+            <button id="history-filter-empty-clear" type="button">Xem tất cả bill</button>
+          </div>
 
           <div class="history-empty" id="history-empty">
             <img

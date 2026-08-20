@@ -1,6 +1,9 @@
 import {
   HISTORY_STORAGE_KEY,
   clearHistory as clearStoredHistory,
+  filterHistoryByDateRange,
+  isHistoryDateRangeValid,
+  paginateHistoryRecords,
   readHistory,
   removeHistoryRecord,
 } from "./bill-history.js";
@@ -45,13 +48,27 @@ const elements = {
   debtPagePrev: document.querySelector("#debt-page-prev"),
   debtPageStatus: document.querySelector("#debt-page-status"),
   debtPageNext: document.querySelector("#debt-page-next"),
+  historyDateFrom: document.querySelector("#history-date-from"),
+  historyDateTo: document.querySelector("#history-date-to"),
+  historyDateClear: document.querySelector("#history-date-clear"),
+  historyDateError: document.querySelector("#history-date-error"),
+  historyFilterEmpty: document.querySelector("#history-filter-empty"),
+  historyFilterEmptyClear: document.querySelector("#history-filter-empty-clear"),
+  historyPagination: document.querySelector("#history-pagination"),
+  historyPagePrev: document.querySelector("#history-page-prev"),
+  historyPageStatus: document.querySelector("#history-page-status"),
+  historyPageNext: document.querySelector("#history-page-next"),
 };
 
 const DEBT_PAGE_SIZE = 10;
+const HISTORY_PAGE_SIZE = 5;
 let records = readHistory();
 let debtEntries = readDebtEntries();
 let debtPersonFilter = "";
 let debtPage = 1;
+let historyDateFrom = "";
+let historyDateTo = "";
+let historyPage = 1;
 let pendingDelete = null;
 
 const formatMoney = (value) => `${money.format(Math.round(value || 0))} ₫`;
@@ -247,11 +264,51 @@ function renderHistoryCard(record) {
 }
 
 function renderHistory() {
+  const isDateRangeValid = isHistoryDateRangeValid(historyDateFrom, historyDateTo);
+  const filteredRecords = isDateRangeValid
+    ? filterHistoryByDateRange(records, historyDateFrom, historyDateTo)
+    : [];
+  const pagination = paginateHistoryRecords(filteredRecords, historyPage, HISTORY_PAGE_SIZE);
+  const hasDateFilter = Boolean(historyDateFrom || historyDateTo);
+  historyPage = pagination.page;
+
   elements.count.textContent = String(records.length);
   elements.empty.hidden = records.length > 0;
   elements.clearButton.hidden = records.length === 0;
-  elements.list.innerHTML = records.map(renderHistoryCard).join("");
+  elements.list.innerHTML = pagination.items.map(renderHistoryCard).join("");
+  elements.historyDateFrom.disabled = records.length === 0;
+  elements.historyDateTo.disabled = records.length === 0;
+  elements.historyDateFrom.max = historyDateTo;
+  elements.historyDateTo.min = historyDateFrom;
+  elements.historyDateFrom.setAttribute("aria-invalid", String(!isDateRangeValid));
+  elements.historyDateTo.setAttribute("aria-invalid", String(!isDateRangeValid));
+  elements.historyDateError.hidden = isDateRangeValid;
+  elements.historyDateClear.hidden = !hasDateFilter;
+  elements.historyFilterEmpty.hidden = records.length === 0 || pagination.total > 0 || !isDateRangeValid;
+  elements.historyPagination.hidden = pagination.total <= HISTORY_PAGE_SIZE || !isDateRangeValid;
+  elements.historyPagePrev.disabled = pagination.page <= 1;
+  elements.historyPageNext.disabled = pagination.page >= pagination.pageCount;
+  elements.historyPageStatus.textContent = pagination.total
+    ? `Trang ${pagination.page} / ${pagination.pageCount} · ${pagination.start}–${pagination.end} trên ${pagination.total} bill`
+    : "Trang 1 / 1";
   renderDebtLedger();
+}
+
+function clearHistoryDateFilter() {
+  historyDateFrom = "";
+  historyDateTo = "";
+  historyPage = 1;
+  elements.historyDateFrom.value = "";
+  elements.historyDateTo.value = "";
+  renderHistory();
+}
+
+function scrollToHistoryList() {
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  document.querySelector("#history-heading")?.scrollIntoView({
+    behavior: reduceMotion ? "auto" : "smooth",
+    block: "start",
+  });
 }
 
 function openDeleteDialog(deleteRequest) {
@@ -307,6 +364,33 @@ elements.list.addEventListener("click", (event) => {
 
 elements.clearButton.addEventListener("click", () => {
   openDeleteDialog({ type: "all" });
+});
+
+elements.historyDateFrom.addEventListener("change", (event) => {
+  historyDateFrom = event.target.value;
+  historyPage = 1;
+  renderHistory();
+});
+
+elements.historyDateTo.addEventListener("change", (event) => {
+  historyDateTo = event.target.value;
+  historyPage = 1;
+  renderHistory();
+});
+
+elements.historyDateClear.addEventListener("click", clearHistoryDateFilter);
+elements.historyFilterEmptyClear.addEventListener("click", clearHistoryDateFilter);
+
+elements.historyPagePrev.addEventListener("click", () => {
+  historyPage -= 1;
+  renderHistory();
+  scrollToHistoryList();
+});
+
+elements.historyPageNext.addEventListener("click", () => {
+  historyPage += 1;
+  renderHistory();
+  scrollToHistoryList();
 });
 
 elements.debtFilter.addEventListener("change", (event) => {
@@ -368,6 +452,11 @@ elements.confirmDelete.addEventListener("click", () => {
   try {
     if (pendingDelete.type === "all") {
       records = clearStoredHistory(localStorage);
+      historyDateFrom = "";
+      historyDateTo = "";
+      historyPage = 1;
+      elements.historyDateFrom.value = "";
+      elements.historyDateTo.value = "";
     } else if (pendingDelete.type === "record") {
       records = removeHistoryRecord(localStorage, pendingDelete.id);
     } else if (pendingDelete.type === "debt-all") {

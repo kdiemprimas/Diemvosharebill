@@ -128,3 +128,65 @@ export function clearHistory(storage = localStorage) {
   storage.removeItem(HISTORY_STORAGE_KEY);
   return [];
 }
+
+function isValidDateKey(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year
+    && parsed.getUTCMonth() === month - 1
+    && parsed.getUTCDate() === day;
+}
+
+export function isHistoryDateRangeValid(fromDate = "", toDate = "") {
+  const from = isValidDateKey(fromDate) ? fromDate : "";
+  const to = isValidDateKey(toDate) ? toDate : "";
+  return !from || !to || from <= to;
+}
+
+function getHistoryDateKey(record) {
+  const orderDate = cleanText(record?.orderDate, 80);
+  const match = orderDate.match(/(?:^|\D)(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})(?:\D|$)/);
+  if (match) {
+    const dateKey = `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+    if (isValidDateKey(dateKey)) return dateKey;
+  }
+
+  const confirmedDate = cleanText(record?.confirmedAt, 40).slice(0, 10);
+  return isValidDateKey(confirmedDate) ? confirmedDate : "";
+}
+
+export function filterHistoryByDateRange(records = [], fromDate = "", toDate = "") {
+  const items = Array.isArray(records) ? records : [];
+  const from = isValidDateKey(fromDate) ? fromDate : "";
+  const to = isValidDateKey(toDate) ? toDate : "";
+  if (!isHistoryDateRangeValid(from, to)) return [];
+
+  return items.filter((record) => {
+    const dateKey = getHistoryDateKey(record);
+    if (!dateKey) return !from && !to;
+    return (!from || dateKey >= from) && (!to || dateKey <= to);
+  });
+}
+
+export function paginateHistoryRecords(records = [], requestedPage = 1, requestedPageSize = 5) {
+  const items = Array.isArray(records) ? records : [];
+  const pageSize = Number.isInteger(requestedPageSize) && requestedPageSize > 0
+    ? Math.min(requestedPageSize, 50)
+    : 5;
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const numericPage = Number.isFinite(Number(requestedPage)) ? Math.trunc(Number(requestedPage)) : 1;
+  const page = Math.min(pageCount, Math.max(1, numericPage));
+  const startIndex = (page - 1) * pageSize;
+  const pageItems = items.slice(startIndex, startIndex + pageSize);
+
+  return {
+    items: pageItems,
+    page,
+    pageCount,
+    pageSize,
+    start: pageItems.length ? startIndex + 1 : 0,
+    end: startIndex + pageItems.length,
+    total: items.length,
+  };
+}
