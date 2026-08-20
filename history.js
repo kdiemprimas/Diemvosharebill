@@ -10,8 +10,10 @@ import {
 import {
   DEBT_STORAGE_KEY,
   clearDebtEntries as clearStoredDebtEntries,
+  filterDebtEntriesByYear,
   getDebtOverview,
   getDebtSummary,
+  getDebtYears,
   paginateDebtEntries,
   readDebtEntries,
   removeDebtEntry,
@@ -36,6 +38,7 @@ const elements = {
   debtList: document.querySelector("#debt-ledger-list"),
   debtSummaryList: document.querySelector("#debt-summary-list"),
   debtFilter: document.querySelector("#debt-person-filter"),
+  debtYearFilter: document.querySelector("#debt-year-filter"),
   debtTableWrap: document.querySelector("#debt-table-wrap"),
   debtEmpty: document.querySelector("#debt-ledger-empty"),
   debtFilterEmpty: document.querySelector("#debt-filter-empty"),
@@ -65,6 +68,7 @@ const HISTORY_PAGE_SIZE = 5;
 let records = readHistory();
 let debtEntries = readDebtEntries();
 let debtPersonFilter = "";
+let debtYearFilter = "";
 let debtPage = 1;
 let historyDateFrom = "";
 let historyDateTo = "";
@@ -160,17 +164,32 @@ function renderDebtFilter(summary) {
       </option>
     `).join("")}
   `;
+  elements.debtFilter.disabled = summary.length === 0;
+}
+
+function renderDebtYearFilter() {
+  const years = getDebtYears(debtEntries);
+  if (!years.includes(debtYearFilter)) debtYearFilter = "";
+  elements.debtYearFilter.innerHTML = `
+    <option value="">Tất cả năm</option>
+    ${years.map((year) => `
+      <option value="${year}" ${year === debtYearFilter ? "selected" : ""}>${year}</option>
+    `).join("")}
+  `;
+  elements.debtYearFilter.disabled = years.length === 0;
 }
 
 function renderDebtLedger() {
-  const summary = getDebtSummary(debtEntries);
+  renderDebtYearFilter();
+  const yearEntries = filterDebtEntriesByYear(debtEntries, debtYearFilter);
+  const summary = getDebtSummary(yearEntries);
   renderDebtFilter(summary);
   const filteredEntries = debtPersonFilter
-    ? debtEntries.filter(({ debtor }) => normalizeName(debtor) === debtPersonFilter)
-    : debtEntries;
+    ? yearEntries.filter(({ debtor }) => normalizeName(debtor) === debtPersonFilter)
+    : yearEntries;
   const pagination = paginateDebtEntries(filteredEntries, debtPage, DEBT_PAGE_SIZE);
   debtPage = pagination.page;
-  const overview = getDebtOverview(debtEntries);
+  const overview = getDebtOverview(yearEntries);
 
   elements.debtTotalUnpaid.textContent = formatMoney(overview.unpaidAmount);
   elements.debtTotalPaid.textContent = formatMoney(overview.paidAmount);
@@ -395,6 +414,12 @@ elements.historyPageNext.addEventListener("click", () => {
 
 elements.debtFilter.addEventListener("change", (event) => {
   debtPersonFilter = event.target.value;
+  debtPage = 1;
+  renderDebtLedger();
+});
+
+elements.debtYearFilter.addEventListener("change", (event) => {
+  debtYearFilter = event.target.value;
   debtPage = 1;
   renderDebtLedger();
 });

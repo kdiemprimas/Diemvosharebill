@@ -98,10 +98,16 @@
               <p class="debt-ledger-intro">Cộng dồn các khoản chưa trả của từng người từ những bill bạn đã chọn lưu.</p>
             </div>
             <div class="debt-ledger-controls">
-              <label class="debt-person-filter-label" for="debt-person-filter">
+              <label class="debt-filter-label debt-person-filter-label" for="debt-person-filter">
                 <span>Lọc theo người</span>
                 <select id="debt-person-filter">
                   <option value="">Tất cả mọi người</option>
+                </select>
+              </label>
+              <label class="debt-filter-label debt-year-filter-label" for="debt-year-filter">
+                <span>Lọc theo năm</span>
+                <select id="debt-year-filter">
+                  <option value="">Tất cả năm</option>
                 </select>
               </label>
               <button class="history-clear-button" id="clear-debt-ledger" type="button" hidden>

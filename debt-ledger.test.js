@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import {
   DEBT_STORAGE_KEY,
   createDebtEntries,
+  filterDebtEntriesByYear,
   getDebtOverview,
   getDebtSummary,
+  getDebtYears,
   paginateDebtEntries,
   parseDebtEntries,
   preserveDebtStatuses,
@@ -168,6 +170,32 @@ test("phân trang tự giới hạn trang vượt quá dữ liệu", () => {
 
   assert.equal(result.page, 2);
   assert.deepEqual(result.items.map(({ id }) => id), ["entry-11", "entry-12"]);
+});
+
+test("lấy danh sách năm duy nhất từ cột ngày theo thứ tự mới nhất", () => {
+  const entries = [
+    { date: "2025-12-31" },
+    { date: "2026-01-02" },
+    { date: "2025-04-10" },
+    { date: "không rõ" },
+    { date: "2024-08-20" },
+  ];
+
+  assert.deepEqual(getDebtYears(entries), ["2026", "2025", "2024"]);
+});
+
+test("lọc các khoản tiền đúng theo năm của cột ngày", () => {
+  const entries = [
+    { id: "entry-1", date: "2026-01-02" },
+    { id: "entry-2", date: "2025-12-31" },
+    { id: "entry-3", date: "2025-04-10" },
+  ];
+
+  assert.deepEqual(
+    filterDebtEntriesByYear(entries, "2025").map(({ id }) => id),
+    ["entry-2", "entry-3"],
+  );
+  assert.deepEqual(filterDebtEntriesByYear(entries, ""), entries);
 });
 
 test("đổi trạng thái và xóa đúng một khoản đã lưu", () => {

@@ -410,9 +410,11 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .debt-ledger-intro { max-width: 570px; margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.65; }
 .debt-ledger-heading { align-items: flex-start; }
 .debt-ledger-controls { display: flex; align-items: end; gap: 10px; }
-.debt-person-filter-label { display: grid; gap: 6px; min-width: 170px; }
-.debt-person-filter-label span { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
-.debt-person-filter-label select { height: 38px; padding: 0 31px 0 11px; background-color: #fffdf9; font-size: 10px; }
+.debt-filter-label { display: grid; gap: 6px; }
+.debt-person-filter-label { min-width: 170px; }
+.debt-year-filter-label { min-width: 120px; }
+.debt-filter-label span { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.debt-filter-label select { height: 38px; padding: 0 31px 0 11px; background-color: #fffdf9; font-size: 10px; }
 .debt-overview { display: grid; grid-template-columns: 1.25fr 1.25fr 0.9fr 0.9fr; gap: 10px; margin: 0 0 15px; }
 .debt-overview > div { display: grid; gap: 6px; padding: 16px 17px; background: rgba(255, 253, 249, 0.84); border: 1px solid rgba(126, 119, 116, 0.12); border-radius: 13px; }
 .debt-overview dt { color: var(--muted); font-size: 9px; }
@@ -594,7 +596,8 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
   .history-date-filter { flex: 1; min-width: 0; }
   .debt-ledger-heading { display: grid; }
   .debt-ledger-controls { width: 100%; align-items: end; justify-content: space-between; }
-  .debt-person-filter-label { min-width: 0; flex: 1; }
+  .debt-filter-label { min-width: 0; flex: 1; }
+  .debt-year-filter-label { max-width: 140px; }
   .debt-overview { grid-template-columns: 1fr 1fr; }
   .debt-overview > div:first-child, .debt-overview > div:nth-child(2) { grid-column: 1 / -1; }
   .debt-summary-list { grid-template-columns: 1fr 1fr; }
@@ -616,8 +619,9 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 }
 
 @media (max-width: 430px) {
-  .debt-ledger-controls { display: grid; }
-  .debt-ledger-controls .history-clear-button { max-width: none; }
+  .debt-ledger-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .debt-ledger-controls .history-clear-button { grid-column: 1 / -1; max-width: none; }
+  .debt-year-filter-label { max-width: none; }
   .debt-summary-list { grid-template-columns: 1fr; }
   .debt-pagination, .history-pagination { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; }
   .debt-pagination[hidden], .history-pagination[hidden] { display: none; }

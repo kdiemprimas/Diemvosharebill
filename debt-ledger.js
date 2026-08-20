@@ -235,3 +235,20 @@ export function paginateDebtEntries(entries = [], requestedPage = 1, requestedPa
     total: items.length,
   };
 }
+
+export function getDebtYears(entries = []) {
+  const years = new Set(
+    (Array.isArray(entries) ? entries : [])
+      .map(({ date }) => /^\d{4}-\d{2}-\d{2}$/.test(String(date || "")) ? String(date).slice(0, 4) : "")
+      .filter(Boolean),
+  );
+  return [...years].sort((left, right) => right.localeCompare(left));
+}
+
+export function filterDebtEntriesByYear(entries = [], year = "") {
+  const items = Array.isArray(entries) ? entries : [];
+  const selectedYear = String(year || "").trim();
+  if (!selectedYear) return items;
+  if (!/^\d{4}$/.test(selectedYear)) return [];
+  return items.filter(({ date }) => String(date || "").startsWith(`${selectedYear}-`));
+}
