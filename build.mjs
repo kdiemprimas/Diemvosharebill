@@ -16,6 +16,7 @@ const publicFiles = [
   "debt-ledger.js",
   "debt-export.js",
   "debt-status-update.js",
+  "history-delete-confirmation.js",
 ];
 const imageAssets = [
   "assets/teolaegi-pet-logo.png",
@@ -81,7 +82,11 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
     .replace("./debt-ledger.js", `./debt-ledger.js?v=${assetVersion}`)
     .replace("./debt-export.js", `./debt-export.js?v=${assetVersion}`);
   const versionedHistoryAppWithStatusUpdate = versionedHistoryApp
-    .replace("./debt-status-update.js", `./debt-status-update.js?v=${assetVersion}`);
+    .replace("./debt-status-update.js", `./debt-status-update.js?v=${assetVersion}`)
+    .replace(
+      "./history-delete-confirmation.js",
+      `./history-delete-confirmation.js?v=${assetVersion}`,
+    );
   await Promise.all([
     writeFile(join(target, "index.html"), versionedHtml, "utf8"),
     writeFile(join(target, "history.html"), versionedHistoryHtml, "utf8"),

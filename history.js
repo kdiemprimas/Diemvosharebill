@@ -37,6 +37,7 @@ import {
   createDebtStatusConfirmation,
   createDebtStatusUpdateFeedback,
 } from "./debt-status-update.js";
+import { createHistoryDeleteConfirmation } from "./history-delete-confirmation.js";
 
 const money = new Intl.NumberFormat("vi-VN");
 const confirmedTime = new Intl.DateTimeFormat("vi-VN", {
@@ -810,34 +811,13 @@ function scrollToHistoryList() {
 }
 
 function openDeleteDialog(deleteRequest) {
+  const copy = createHistoryDeleteConfirmation(deleteRequest, {
+    historyCount: records.length,
+    debtCount: debtEntries.length,
+    formatAmount: formatMoney,
+  });
+  if (!copy) return;
   pendingDelete = deleteRequest;
-  const copy = {
-    all: {
-      title: "Xóa toàn bộ lịch sử bill?",
-      description: `${records.length} bill đã lưu sẽ bị xóa và không thể khôi phục trên thiết bị này.`,
-      button: "Xóa toàn bộ bill",
-    },
-    record: {
-      title: `Xóa “${deleteRequest.billName}”?`,
-      description: "Bill này sẽ bị xóa khỏi lịch sử và không thể khôi phục trên thiết bị này.",
-      button: "Xóa khỏi lịch sử",
-    },
-    "debt-all": {
-      title: "Xóa toàn bộ sổ tiền chia?",
-      description: `${debtEntries.length} khoản đã lưu sẽ bị xóa. Lịch sử bill vẫn được giữ lại.`,
-      button: "Xóa sổ tiền chia",
-    },
-    "debt-entry": {
-      title: `Xóa khoản của “${deleteRequest.debtor}”?`,
-      description: `${formatMoney(deleteRequest.amount)} sẽ bị xóa khỏi sổ tiền chia và không thể khôi phục.`,
-      button: "Xóa khoản này",
-    },
-    "debt-bulk": {
-      title: `Xóa ${deleteRequest.ids.length} khoản đã chọn?`,
-      description: `${formatMoney(deleteRequest.amount)} trong các khoản đã chọn sẽ bị xóa và không thể khôi phục.`,
-      button: `Xóa ${deleteRequest.ids.length} khoản`,
-    },
-  }[deleteRequest.type];
   elements.deleteTitle.textContent = copy.title;
   elements.deleteDescription.textContent = copy.description;
   elements.confirmDelete.textContent = copy.button;

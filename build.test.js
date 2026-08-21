@@ -23,6 +23,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
     "debt-ledger.js",
     "debt-export.js",
     "debt-status-update.js",
+    "history-delete-confirmation.js",
     "assets/teolaegi-pet-logo.png",
     "assets/teolaegi-spritesheet.webp",
     "assets/melo-spritesheet.webp",
@@ -143,6 +144,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyApp, /bill-history\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /debt-ledger\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /debt-export\.js\?v=[a-f0-9]{12}/);
+  assert.match(historyApp, /history-delete-confirmation\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /createDebtWorkbook/);
   assert.match(historyApp, /createManualDebtEntry/);
   assert.match(historyApp, /formatDebtAmountInput/);
