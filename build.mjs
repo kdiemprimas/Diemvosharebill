@@ -15,6 +15,7 @@ const publicFiles = [
   "bill-history.js",
   "debt-ledger.js",
   "debt-export.js",
+  "debt-status-update.js",
 ];
 const imageAssets = [
   "assets/teolaegi-pet-logo.png",
@@ -79,11 +80,13 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
     .replace("./bill-history.js", `./bill-history.js?v=${assetVersion}`)
     .replace("./debt-ledger.js", `./debt-ledger.js?v=${assetVersion}`)
     .replace("./debt-export.js", `./debt-export.js?v=${assetVersion}`);
+  const versionedHistoryAppWithStatusUpdate = versionedHistoryApp
+    .replace("./debt-status-update.js", `./debt-status-update.js?v=${assetVersion}`);
   await Promise.all([
     writeFile(join(target, "index.html"), versionedHtml, "utf8"),
     writeFile(join(target, "history.html"), versionedHistoryHtml, "utf8"),
     writeFile(join(target, "app.js"), versionedApp, "utf8"),
-    writeFile(join(target, "history.js"), versionedHistoryApp, "utf8"),
+    writeFile(join(target, "history.js"), versionedHistoryAppWithStatusUpdate, "utf8"),
   ]);
 
   await mkdir(join(target, "node_modules", "tesseract.js", "dist"), { recursive: true });

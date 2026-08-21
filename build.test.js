@@ -22,6 +22,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
     "bill-history.js",
     "debt-ledger.js",
     "debt-export.js",
+    "debt-status-update.js",
     "assets/teolaegi-pet-logo.png",
     "assets/teolaegi-spritesheet.webp",
     "assets/melo-spritesheet.webp",
@@ -109,7 +110,12 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /id="debt-bulk-mark-paid"/);
   assert.match(historyHtml, /id="debt-bulk-mark-unpaid"/);
   assert.match(historyHtml, /id="debt-bulk-delete"/);
-  assert.match(historyHtml, /id="debt-bulk-feedback"[^>]+aria-live="polite"/);
+  assert.match(historyHtml, /class="debt-bulk-feedback"[^>]+id="debt-bulk-feedback"[^>]+aria-live="polite"/);
+  assert.doesNotMatch(historyHtml, /class="visually-hidden"[^>]+id="debt-bulk-feedback"/);
+  assert.match(historyHtml, /<dialog[^>]+id="debt-status-dialog"/);
+  assert.match(historyHtml, /id="debt-status-title"/);
+  assert.match(historyHtml, /id="debt-status-description"/);
+  assert.match(historyHtml, /id="confirm-debt-status-update"/);
   assert.match(historyHtml, /id="open-manual-debt"/);
   assert.match(historyHtml, /<dialog[^>]+id="manual-debt-dialog"/);
   assert.match(historyHtml, /id="manual-debt-creditor"[^>]+required/);

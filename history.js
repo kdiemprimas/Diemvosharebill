@@ -33,6 +33,10 @@ import {
   getDebtExportEntries,
   getDebtReportPeriodLabel,
 } from "./debt-export.js";
+import {
+  createDebtStatusConfirmation,
+  createDebtStatusUpdateFeedback,
+} from "./debt-status-update.js";
 
 const money = new Intl.NumberFormat("vi-VN");
 const confirmedTime = new Intl.DateTimeFormat("vi-VN", {
@@ -74,6 +78,10 @@ const elements = {
   debtBulkMarkUnpaid: document.querySelector("#debt-bulk-mark-unpaid"),
   debtBulkDelete: document.querySelector("#debt-bulk-delete"),
   debtBulkFeedback: document.querySelector("#debt-bulk-feedback"),
+  debtStatusDialog: document.querySelector("#debt-status-dialog"),
+  debtStatusTitle: document.querySelector("#debt-status-title"),
+  debtStatusDescription: document.querySelector("#debt-status-description"),
+  confirmDebtStatusUpdate: document.querySelector("#confirm-debt-status-update"),
   debtSelectPage: document.querySelector("#debt-select-page"),
   openManualDebt: document.querySelector("#open-manual-debt"),
   openManualDebtEmpty: document.querySelector("#open-manual-debt-empty"),
@@ -113,6 +121,7 @@ let historyDateFrom = "";
 let historyDateTo = "";
 let historyPage = 1;
 let pendingDelete = null;
+let pendingDebtStatusUpdate = null;
 
 const formatMoney = (value) => `${money.format(Math.round(value || 0))} ₫`;
 
@@ -414,18 +423,61 @@ function renderDebtLedger() {
   renderDebtSelection();
 }
 
-function updateSelectedDebtStatus(status) {
-  const selectedIds = [...selectedDebtIds];
-  if (!selectedIds.length) return;
+function clearDebtBulkFeedback() {
+  elements.debtBulkFeedback.hidden = true;
+  elements.debtBulkFeedback.textContent = "";
+  delete elements.debtBulkFeedback.dataset.state;
+  elements.debtBulkFeedback.setAttribute("role", "status");
+  elements.debtBulkFeedback.setAttribute("aria-live", "polite");
+}
+
+function showDebtBulkFeedback(feedback) {
+  elements.debtBulkFeedback.dataset.state = feedback.state;
+  elements.debtBulkFeedback.setAttribute("role", feedback.state === "error" ? "alert" : "status");
+  elements.debtBulkFeedback.setAttribute("aria-live", feedback.state === "error" ? "assertive" : "polite");
+  elements.debtBulkFeedback.textContent = feedback.message;
+  elements.debtBulkFeedback.hidden = false;
+}
+
+function closeDebtStatusDialog() {
+  if (typeof elements.debtStatusDialog.close === "function") {
+    elements.debtStatusDialog.close();
+  } else {
+    elements.debtStatusDialog.removeAttribute("open");
+  }
+}
+
+function openDebtStatusDialog(status) {
+  const ids = [...selectedDebtIds];
+  if (!ids.length) return;
+  pendingDebtStatusUpdate = { ids, status };
+  const copy = createDebtStatusConfirmation(ids.length, status);
+  elements.debtStatusTitle.textContent = copy.title;
+  elements.debtStatusDescription.textContent = copy.description;
+  elements.confirmDebtStatusUpdate.textContent = copy.button;
+
+  if (typeof elements.debtStatusDialog.showModal === "function") {
+    elements.debtStatusDialog.showModal();
+  } else {
+    elements.debtStatusDialog.setAttribute("open", "");
+  }
+}
+
+function updateSelectedDebtStatus() {
+  if (!pendingDebtStatusUpdate) return;
+  const { ids, status } = pendingDebtStatusUpdate;
+  pendingDebtStatusUpdate = null;
   try {
-    debtEntries = updateDebtStatuses(localStorage, selectedIds, status);
+    debtEntries = updateDebtStatuses(localStorage, ids, status);
   } catch {
-    elements.debtBulkFeedback.textContent = "Chưa thể cập nhật các khoản đã chọn. Hãy thử lại.";
+    closeDebtStatusDialog();
+    showDebtBulkFeedback(createDebtStatusUpdateFeedback(ids.length, status, false));
     return;
   }
   selectedDebtIds.clear();
-  elements.debtBulkFeedback.textContent = `Đã đánh dấu ${selectedIds.length} khoản là ${status === "paid" ? "đã trả" : "chưa trả"}.`;
+  closeDebtStatusDialog();
   renderDebtLedger();
+  showDebtBulkFeedback(createDebtStatusUpdateFeedback(ids.length, status, true));
   focusDebtLedgerAfterBulkAction();
 }
 
@@ -897,7 +949,7 @@ elements.debtSelectPage.addEventListener("change", (event) => {
     if (event.target.checked) selectedDebtIds.add(id);
     else selectedDebtIds.delete(id);
   });
-  elements.debtBulkFeedback.textContent = "";
+  clearDebtBulkFeedback();
   renderDebtLedger();
 });
 
@@ -907,12 +959,16 @@ elements.debtList.addEventListener("change", (event) => {
   if (checkbox.checked) selectedDebtIds.add(checkbox.dataset.selectDebtId);
   else selectedDebtIds.delete(checkbox.dataset.selectDebtId);
   checkbox.closest("tr")?.classList.toggle("is-selected", checkbox.checked);
-  elements.debtBulkFeedback.textContent = "";
+  clearDebtBulkFeedback();
   renderDebtSelection();
 });
 
-elements.debtBulkMarkPaid.addEventListener("click", () => updateSelectedDebtStatus("paid"));
-elements.debtBulkMarkUnpaid.addEventListener("click", () => updateSelectedDebtStatus("unpaid"));
+elements.debtBulkMarkPaid.addEventListener("click", () => openDebtStatusDialog("paid"));
+elements.debtBulkMarkUnpaid.addEventListener("click", () => openDebtStatusDialog("unpaid"));
+elements.confirmDebtStatusUpdate.addEventListener("click", updateSelectedDebtStatus);
+elements.debtStatusDialog.addEventListener("close", () => {
+  pendingDebtStatusUpdate = null;
+});
 elements.debtBulkDelete.addEventListener("click", () => {
   const selectedEntries = debtEntries.filter(({ id }) => selectedDebtIds.has(id));
   if (!selectedEntries.length) return;

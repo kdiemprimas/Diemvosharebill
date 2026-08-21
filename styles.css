@@ -458,6 +458,13 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .debt-bulk-delete-button { color: #a54e54; background: #fffdf9; border: 1px solid rgba(185, 86, 88, 0.28); }
 .debt-bulk-status-button:hover, .debt-bulk-delete-button:hover { filter: brightness(0.97); transform: translateY(-1px); }
 .debt-bulk-status-button:focus-visible, .debt-bulk-delete-button:focus-visible { outline: 3px solid rgba(225, 123, 102, 0.34); outline-offset: 2px; }
+.debt-bulk-feedback { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid; border-radius: 10px; font-size: 9px; font-weight: 700; line-height: 1.5; }
+.debt-bulk-feedback::before { flex: 0 0 auto; font-size: 13px; font-weight: 900; }
+.debt-bulk-feedback[data-state="success"] { color: #315f56; background: #e5f2ec; border-color: rgba(69, 121, 105, 0.28); }
+.debt-bulk-feedback[data-state="success"]::before { content: "✓"; }
+.debt-bulk-feedback[data-state="error"] { color: #93434a; background: #fcedea; border-color: rgba(185, 86, 88, 0.28); }
+.debt-bulk-feedback[data-state="error"]::before { content: "!"; }
+.debt-bulk-feedback[hidden] { display: none; }
 .debt-table-wrap { overflow-x: auto; background: #fffdf9; border: 1px solid rgba(126, 119, 116, 0.14); border-radius: 14px; }
 .debt-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 10px; }
 .debt-table th { padding: 11px 12px; color: #355867; text-align: left; background: linear-gradient(180deg, #dcebed, #e9f2ed); border-bottom: 1px solid rgba(85, 127, 142, 0.22); font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
