@@ -13,6 +13,17 @@ function excelSerial(dateKey) {
   return Date.parse(`${dateKey}T00:00:00.000Z`) / 86400000 + 25569;
 }
 
+function patchZipOriginalSize(bytes, originalSize) {
+  const patched = bytes.slice();
+  const view = new DataView(patched.buffer, patched.byteOffset, patched.byteLength);
+  for (let offset = 0; offset <= patched.length - 28; offset += 1) {
+    const signature = view.getUint32(offset, true);
+    if (signature === 0x04034b50) view.setUint32(offset + 22, originalSize, true);
+    if (signature === 0x02014b50) view.setUint32(offset + 24, originalSize, true);
+  }
+  return patched;
+}
+
 test("đọc đúng format Excel mẫu và chuẩn hóa dữ liệu để review", () => {
   const preview = createDebtImportPreview([
     ["STT", "Chủ Nợ", "Con Nợ", "Tiền", "NGÀY", "GHI CHÚ", "STATUS"],
@@ -93,16 +104,16 @@ test("hỗ trợ các tên cột tương đương và kiểu ngày phổ biến"
   ]);
 });
 
-test("báo lỗi cho file rỗng và file vượt giới hạn 1000 dòng", () => {
+test("báo lỗi cho file rỗng và file vượt giới hạn 5000 dòng", () => {
   const empty = createDebtImportPreview([], { sourceKey: "empty", savedAt: SAVED_AT });
   assert.match(empty.fatalErrors.join(" "), /không có dữ liệu/i);
 
   const oversized = createDebtImportPreview([
     ["Chủ nợ", "Con nợ", "Tiền", "Ngày"],
-    ...Array.from({ length: 1001 }, () => ["Diem", "Tin", 10000, "2026-08-20"]),
+    ...Array.from({ length: 5001 }, () => ["Diem", "Tin", 10000, "2026-08-20"]),
   ], { sourceKey: "large", savedAt: SAVED_AT });
-  assert.equal(oversized.totalCount, 1001);
-  assert.match(oversized.fatalErrors.join(" "), /tối đa 1000/i);
+  assert.equal(oversized.totalCount, 5001);
+  assert.match(oversized.fatalErrors.join(" "), /tối đa 5000/i);
 });
 
 test("báo lỗi rõ từng dòng và không đưa dòng lỗi vào danh sách sẽ nhập", () => {
@@ -205,6 +216,49 @@ test("đọc workbook dùng shared strings như file Excel thông thường", ()
   assert.equal(preview.entries[0].amount, 32000);
 });
 
+test("bỏ qua hàng triệu ô trống có style thay vì coi workbook là quá lớn", () => {
+  const styledBlankRows = Array.from({ length: 12000 }, (_, index) => (
+    `<row r="${index + 3}" customFormat="${"x".repeat(700)}"><c r="B${index + 3}" s="25"/><c r="C${index + 3}" s="25"/></row>`
+  )).join("");
+  const workbook = zipSync({
+    "xl/worksheets/sheet1.xml": strToU8(`<?xml version="1.0"?><worksheet><sheetData>
+      <row r="1"><c r="A1" t="inlineStr"><is><t>Chủ nợ</t></is></c><c r="B1" t="inlineStr"><is><t>Con nợ</t></is></c><c r="C1" t="inlineStr"><is><t>Tiền</t></is></c><c r="D1" t="inlineStr"><is><t>Ngày</t></is></c></row>
+      <row r="2"><c r="A2" t="inlineStr"><is><t>Diem</t></is></c><c r="B2" t="inlineStr"><is><t>Tin</t></is></c><c r="C2"><v>32000</v></c><c r="D2" t="inlineStr"><is><t>2026-08-20</t></is></c></row>
+      ${styledBlankRows}
+    </sheetData></worksheet>`),
+  }, { level: 9 });
+
+  const preview = createDebtImportPreview(parseDebtWorkbook(workbook), {
+    sourceKey: "styled-blanks",
+    savedAt: SAVED_AT,
+  });
+
+  assert.equal(preview.validCount, 1);
+  assert.equal(preview.entries[0].amount, 32000);
+});
+
+test("cho phép 5000 dòng dữ liệu nằm thưa trong giới hạn dòng của Excel", () => {
+  const dataRows = Array.from({ length: 5000 }, (_, index) => {
+    const rowNumber = (index + 1) * 3;
+    return `<row r="${rowNumber}"><c r="A${rowNumber}" t="inlineStr"><is><t>Diem</t></is></c><c r="B${rowNumber}" t="inlineStr"><is><t>Tin</t></is></c><c r="C${rowNumber}"><v>10000</v></c><c r="D${rowNumber}" t="inlineStr"><is><t>2026-08-20</t></is></c></row>`;
+  }).join("");
+  const workbook = zipSync({
+    "xl/worksheets/sheet1.xml": strToU8(`<?xml version="1.0"?><worksheet><sheetData>
+      <row r="1"><c r="A1" t="inlineStr"><is><t>Chủ nợ</t></is></c><c r="B1" t="inlineStr"><is><t>Con nợ</t></is></c><c r="C1" t="inlineStr"><is><t>Tiền</t></is></c><c r="D1" t="inlineStr"><is><t>Ngày</t></is></c></row>
+      ${dataRows}
+    </sheetData></worksheet>`),
+  }, { level: 9 });
+
+  const preview = createDebtImportPreview(parseDebtWorkbook(workbook), {
+    sourceKey: "sparse-rows",
+    savedAt: SAVED_AT,
+  });
+
+  assert.equal(preview.totalCount, 5000);
+  assert.equal(preview.validCount, 5000);
+  assert.equal(preview.rows.at(-1).rowNumber, 15000);
+});
+
 test("đọc đúng ngày từ workbook dùng hệ ngày 1904", () => {
   const date1904Serial = Date.parse("2026-08-20T00:00:00.000Z") / 86400000 + 24107;
   const workbook = zipSync({
@@ -230,6 +284,37 @@ test("từ chối worksheet khai báo số dòng cực lớn", () => {
   assert.throws(() => parseDebtWorkbook(workbook), /Excel|xlsx/i);
 });
 
+test("bỏ qua dòng tự đóng và từ chối dòng XML chưa đóng", () => {
+  const validWorkbook = zipSync({
+    "xl/worksheets/sheet1.xml": strToU8(`<?xml version="1.0"?><worksheet><sheetData>
+      <row r="1"><c r="A1" t="inlineStr"><is><t>Chủ nợ</t></is></c></row>
+      <row r="2"/>
+    </sheetData></worksheet>`),
+  });
+  assert.deepEqual(parseDebtWorkbook(validWorkbook), [["Chủ nợ"]]);
+
+  const malformedWorkbook = zipSync({
+    "xl/worksheets/sheet1.xml": strToU8('<?xml version="1.0"?><worksheet><sheetData><row r="1"><c r="A1"><v>1</v></c></sheetData></worksheet>'),
+  });
+  assert.throws(() => parseDebtWorkbook(malformedWorkbook), /Excel|xlsx/i);
+});
+
+test("từ chối worksheet bị thiếu thẻ đóng dù các dòng dữ liệu đã đủ", () => {
+  const workbook = zipSync({
+    "xl/worksheets/sheet1.xml": strToU8('<?xml version="1.0"?><worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Chủ nợ</t></is></c></row>'),
+  });
+
+  assert.throws(() => parseDebtWorkbook(workbook), /Excel|xlsx/i);
+});
+
+test("từ chối archive không chứa worksheet mặc định", () => {
+  const workbook = zipSync({
+    "xl/worksheets/other.xml": strToU8('<?xml version="1.0"?><worksheet><sheetData/></worksheet>'),
+  });
+
+  assert.throws(() => parseDebtWorkbook(workbook), /Excel|xlsx/i);
+});
+
 test("từ chối nội dung không phải workbook xlsx", () => {
   assert.throws(
     () => parseDebtWorkbook(new TextEncoder().encode("not an xlsx file")),
@@ -238,9 +323,18 @@ test("từ chối nội dung không phải workbook xlsx", () => {
 });
 
 test("từ chối workbook có nội dung giải nén vượt giới hạn an toàn", () => {
-  const oversizedWorkbook = zipSync({
-    "xl/worksheets/sheet1.xml": strToU8("x".repeat(8 * 1024 * 1024 + 1)),
-  }, { level: 9 });
+  const oversizedWorkbook = patchZipOriginalSize(zipSync({
+    "xl/worksheets/sheet1.xml": strToU8(`<worksheet><sheetData><row r="1"><c r="A1"><v>${"1".repeat(8 * 1024 * 1024 + 1)}</v></c></row></sheetData></worksheet>`),
+  }, { level: 9 }), 1);
 
   assert.throws(() => parseDebtWorkbook(oversizedWorkbook), /Excel|xlsx/i);
+});
+
+test("từ chối shared strings quá lớn dù metadata ZIP khai báo sai", () => {
+  const workbook = patchZipOriginalSize(zipSync({
+    "xl/sharedStrings.xml": strToU8(`<sst><si><t>${"x".repeat(8 * 1024 * 1024 + 1)}</t></si></sst>`),
+    "xl/worksheets/sheet1.xml": strToU8('<?xml version="1.0"?><worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Chủ nợ</t></is></c></row></sheetData></worksheet>'),
+  }, { level: 9 }), 1);
+
+  assert.throws(() => parseDebtWorkbook(workbook), /Excel|xlsx/i);
 });

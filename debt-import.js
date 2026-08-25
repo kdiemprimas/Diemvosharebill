@@ -1,4 +1,8 @@
-import { strFromU8, unzipSync } from "fflate";
+import {
+  strFromU8,
+  Unzip,
+  UnzipInflate,
+} from "fflate";
 
 const REQUIRED_COLUMNS = ["creditor", "debtor", "amount", "date"];
 const COLUMN_LABELS = {
@@ -7,10 +11,13 @@ const COLUMN_LABELS = {
   amount: "Tiền",
   date: "Ngày",
 };
-const MAX_IMPORT_ROWS = 1000;
+const MAX_IMPORT_ROWS = 5000;
 const MAX_COMPRESSED_WORKBOOK_BYTES = 10 * 1024 * 1024;
 const MAX_UNCOMPRESSED_WORKBOOK_BYTES = 8 * 1024 * 1024;
-const MAX_WORKSHEET_ROW_NUMBER = 10000;
+const MAX_WORKSHEET_SOURCE_BYTES = 128 * 1024 * 1024;
+const ZIP_INPUT_CHUNK_BYTES = 16 * 1024;
+const MAX_EXCEL_WORKSHEET_ROW_NUMBER = 1048576;
+const MAX_RETAINED_WORKSHEET_ROWS = 10000;
 const MAX_WORKSHEET_COLUMN_INDEX = 255;
 const EXCEL_EPOCH_OFFSET = 25569;
 const EXCEL_1904_EPOCH_OFFSET = 24107;
@@ -147,7 +154,10 @@ export function createDebtImportPreview(rows = [], options = {}) {
   }
 
   const dataRows = workbookRows
-    .map((row, index) => ({ row, rowNumber: index + 1 }))
+    .map((row, index) => ({
+      row,
+      rowNumber: workbookRows.rowNumbers?.[index] || index + 1,
+    }))
     .slice(headerIndex + 1)
     .filter(({ row }) => !isBlankRow(row));
   if (dataRows.length > MAX_IMPORT_ROWS) {
@@ -277,9 +287,13 @@ function columnIndex(reference) {
 
 function parseWorksheet(xml, sharedStrings) {
   const rows = [];
+  const rowNumbers = [];
   for (const rowMatch of String(xml).matchAll(/<row\b([^>]*)>([\s\S]*?)<\/row>/gi)) {
     const rowNumber = Math.max(1, Number(getXmlAttribute(rowMatch[1], "r")) || rows.length + 1);
-    if (rowNumber > MAX_WORKSHEET_ROW_NUMBER) throw new Error("Số dòng trong worksheet vượt giới hạn.");
+    if (rowNumber > MAX_EXCEL_WORKSHEET_ROW_NUMBER
+      || rows.length >= MAX_RETAINED_WORKSHEET_ROWS) {
+      throw new Error("Số dòng trong worksheet vượt giới hạn.");
+    }
     const row = [];
     let fallbackColumn = 0;
     for (const cellMatch of rowMatch[2].matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/gi)) {
@@ -299,9 +313,14 @@ function parseWorksheet(xml, sharedStrings) {
       row[index] = Number.isNaN(value) ? decodeXml(rawValue) : value;
       fallbackColumn = index + 1;
     }
-    rows[rowNumber - 1] = row;
+    rows.push(row);
+    rowNumbers.push(rowNumber);
   }
-  return rows.map((row) => row || []);
+  Object.defineProperty(rows, "rowNumbers", {
+    value: rowNumbers,
+    enumerable: false,
+  });
+  return rows;
 }
 
 function uses1904DateSystem(files) {
@@ -313,27 +332,186 @@ function uses1904DateSystem(files) {
   return value === "1" || value === "true";
 }
 
-function isRequiredWorkbookPart(name) {
+function isAuxiliaryWorkbookPart(name) {
   return name === "xl/workbook.xml"
     || name === "xl/_rels/workbook.xml.rels"
-    || name === "xl/sharedStrings.xml"
-    || /^xl\/worksheets\/[^/]+\.xml$/i.test(name);
+    || name === "xl/sharedStrings.xml";
 }
 
-function unzipWorkbook(bytes) {
+function unzipAuxiliaryWorkbookParts(bytes) {
+  const files = {};
+  let declaredBytes = 0;
   let uncompressedBytes = 0;
-  return unzipSync(bytes, {
-    filter(file) {
-      if (!isRequiredWorkbookPart(file.name)) return false;
-      const size = Number(file.originalSize) || 0;
-      if (size > MAX_UNCOMPRESSED_WORKBOOK_BYTES
-        || uncompressedBytes + size > MAX_UNCOMPRESSED_WORKBOOK_BYTES) {
-        throw new Error("Nội dung giải nén của workbook vượt giới hạn.");
+  let streamError = null;
+  const unzipper = new Unzip((file) => {
+    if (!isAuxiliaryWorkbookPart(file.name)) return;
+    const declaredSize = Number(file.originalSize) || 0;
+    if (declaredSize > MAX_UNCOMPRESSED_WORKBOOK_BYTES
+      || declaredBytes + declaredSize > MAX_UNCOMPRESSED_WORKBOOK_BYTES) {
+      streamError = new Error("Nội dung giải nén của workbook vượt giới hạn.");
+      return;
+    }
+    declaredBytes += declaredSize;
+    const chunks = [];
+    let fileBytes = 0;
+    file.ondata = (error, data, final) => {
+      if (error) {
+        streamError = error;
+        throw error;
       }
-      uncompressedBytes += size;
-      return true;
-    },
+      try {
+        fileBytes += data.length;
+        uncompressedBytes += data.length;
+        if (fileBytes > MAX_UNCOMPRESSED_WORKBOOK_BYTES
+          || uncompressedBytes > MAX_UNCOMPRESSED_WORKBOOK_BYTES) {
+          throw new Error("Nội dung giải nén của workbook vượt giới hạn.");
+        }
+        chunks.push(data.slice());
+        if (final) {
+          const content = new Uint8Array(fileBytes);
+          let offset = 0;
+          for (const chunk of chunks) {
+            content.set(chunk, offset);
+            offset += chunk.length;
+          }
+          files[file.name] = content;
+        }
+      } catch (caughtError) {
+        streamError = caughtError;
+        throw caughtError;
+      }
+    };
+    file.start();
   });
+  unzipper.register(UnzipInflate);
+  for (let offset = 0; offset < bytes.length; offset += ZIP_INPUT_CHUNK_BYTES) {
+    const end = Math.min(bytes.length, offset + ZIP_INPUT_CHUNK_BYTES);
+    unzipper.push(bytes.subarray(offset, end), end === bytes.length);
+    if (streamError) throw streamError;
+  }
+  if (streamError) throw streamError;
+  return files;
+}
+
+function hasWorksheetValue(rowXml) {
+  return /<v\b[^>]*>[\s\S]*?<\/v\s*>|<is\b[^>]*>[\s\S]*?<\/is\s*>/i.test(rowXml);
+}
+
+function compactWorksheetXml(bytes, worksheetPath) {
+  const retainedRows = [];
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let retainedBytes = 0;
+  let sourceBytes = 0;
+  let pending = "";
+  let structureBuffer = "";
+  let structureState = 0;
+  let foundWorksheet = false;
+  let completedWorksheet = false;
+  let streamError = null;
+
+  function scanStructure(text) {
+    structureBuffer += text;
+    while (structureBuffer) {
+      const match = /<\/?(?:worksheet|sheetData)\b[^>]*>/i.exec(structureBuffer);
+      if (!match) {
+        const partialTagStart = structureBuffer.lastIndexOf("<");
+        structureBuffer = partialTagStart < 0 ? "" : structureBuffer.slice(partialTagStart);
+        break;
+      }
+      const tag = match[0].toLocaleLowerCase();
+      structureBuffer = structureBuffer.slice(match.index + match[0].length);
+      const isClosing = tag.startsWith("</");
+      const isSelfClosing = /\/\s*>$/.test(tag);
+      const isWorksheet = /^<\/?worksheet\b/.test(tag);
+      if (structureState === 0 && isWorksheet && !isClosing && !isSelfClosing) {
+        structureState = 1;
+      } else if (structureState === 1 && !isWorksheet && !isClosing) {
+        structureState = isSelfClosing ? 3 : 2;
+      } else if (structureState === 2 && !isWorksheet && isClosing) {
+        structureState = 3;
+      } else if (structureState === 3 && isWorksheet && isClosing) {
+        structureState = 4;
+      } else {
+        throw new Error("Worksheet có cấu trúc XML không hợp lệ.");
+      }
+    }
+  }
+
+  function consumeRows(text, final) {
+    scanStructure(text);
+    pending += text;
+    while (pending) {
+      const rowStart = pending.search(/<row\b/i);
+      if (rowStart < 0) {
+        pending = pending.slice(-8);
+        break;
+      }
+      if (rowStart > 0) pending = pending.slice(rowStart);
+      const openingEnd = pending.indexOf(">");
+      if (openingEnd < 0) break;
+      const openingTag = pending.slice(0, openingEnd + 1);
+      if (/\/\s*>$/.test(openingTag)) {
+        pending = pending.slice(openingEnd + 1);
+        continue;
+      }
+      const closingMatch = /<\/row\s*>/i.exec(pending);
+      if (!closingMatch) break;
+      const rowEnd = closingMatch.index + closingMatch[0].length;
+      const rowXml = pending.slice(0, rowEnd);
+      pending = pending.slice(rowEnd);
+      if (!hasWorksheetValue(rowXml)) continue;
+      retainedBytes += rowXml.length;
+      if (retainedBytes > MAX_UNCOMPRESSED_WORKBOOK_BYTES) {
+        throw new Error("Dữ liệu có giá trị trong worksheet vượt giới hạn.");
+      }
+      retainedRows.push(rowXml);
+    }
+    if (pending.length > MAX_UNCOMPRESSED_WORKBOOK_BYTES) {
+      throw new Error("Một dòng trong worksheet vượt giới hạn.");
+    }
+    if (final && /<row\b/i.test(pending)) {
+      throw new Error("Worksheet có cấu trúc dòng không hợp lệ.");
+    }
+  }
+
+  const unzipper = new Unzip((file) => {
+    if (file.name !== worksheetPath) return;
+    foundWorksheet = true;
+    if (Number(file.originalSize) > MAX_WORKSHEET_SOURCE_BYTES) {
+      streamError = new Error("Worksheet sau giải nén vượt giới hạn an toàn.");
+      return;
+    }
+    file.ondata = (error, data, final) => {
+      if (streamError) return;
+      if (error) {
+        streamError = error;
+        return;
+      }
+      try {
+        sourceBytes += data.length;
+        if (sourceBytes > MAX_WORKSHEET_SOURCE_BYTES) {
+          throw new Error("Worksheet sau giải nén vượt giới hạn an toàn.");
+        }
+        consumeRows(decoder.decode(data, { stream: !final }), final);
+        completedWorksheet ||= final;
+      } catch (caughtError) {
+        streamError = caughtError;
+        throw caughtError;
+      }
+    };
+    file.start();
+  });
+  unzipper.register(UnzipInflate);
+  for (let offset = 0; offset < bytes.length; offset += ZIP_INPUT_CHUNK_BYTES) {
+    const end = Math.min(bytes.length, offset + ZIP_INPUT_CHUNK_BYTES);
+    unzipper.push(bytes.subarray(offset, end), end === bytes.length);
+    if (streamError) throw streamError;
+  }
+
+  if (streamError) throw streamError;
+  if (!foundWorksheet || !completedWorksheet) throw new Error("Không tìm thấy sheet dữ liệu.");
+  if (structureState !== 4) throw new Error("Worksheet không hợp lệ.");
+  return `<worksheet><sheetData>${retainedRows.join("")}</sheetData></worksheet>`;
 }
 
 function resolveWorksheetPath(files) {
@@ -357,11 +535,9 @@ export function parseDebtWorkbook(input) {
   try {
     const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
     if (bytes.length > MAX_COMPRESSED_WORKBOOK_BYTES) throw new Error("Workbook vượt giới hạn 10 MB.");
-    const files = unzipWorkbook(bytes);
+    const files = unzipAuxiliaryWorkbookParts(bytes);
     const worksheetPath = resolveWorksheetPath(files);
-    const worksheet = files[worksheetPath];
-    if (!worksheet) throw new Error("Không tìm thấy sheet dữ liệu.");
-    const rows = parseWorksheet(strFromU8(worksheet), getSharedStrings(files));
+    const rows = parseWorksheet(compactWorksheetXml(bytes, worksheetPath), getSharedStrings(files));
     Object.defineProperty(rows, "date1904", {
       value: uses1904DateSystem(files),
       enumerable: false,
