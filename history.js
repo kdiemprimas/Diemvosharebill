@@ -24,6 +24,7 @@ import {
   updateDebtStatuses,
   updateDebtStatus,
   upsertDebtEntries,
+  upsertImportedDebtEntries,
 } from "./debt-ledger.js";
 import {
   createPersonDebtReport,
@@ -33,6 +34,10 @@ import {
   getDebtExportEntries,
   getDebtReportPeriodLabel,
 } from "./debt-export.js";
+import {
+  createDebtImportPreview,
+  parseDebtWorkbook,
+} from "./debt-import.js";
 import {
   createDebtStatusConfirmation,
   createDebtStatusUpdateFeedback,
@@ -63,6 +68,15 @@ const elements = {
   debtFilterEmpty: document.querySelector("#debt-filter-empty"),
   debtClearButton: document.querySelector("#clear-debt-ledger"),
   debtExportButton: document.querySelector("#export-debt-excel"),
+  debtImportButton: document.querySelector("#open-debt-import"),
+  debtImportInput: document.querySelector("#debt-import-input"),
+  debtImportStatus: document.querySelector("#debt-import-status"),
+  debtImportDialog: document.querySelector("#debt-import-dialog"),
+  debtImportSummary: document.querySelector("#debt-import-summary"),
+  debtImportFatalError: document.querySelector("#debt-import-fatal-error"),
+  debtImportReview: document.querySelector("#debt-import-review"),
+  debtImportReviewBody: document.querySelector("#debt-import-review-body"),
+  confirmDebtImport: document.querySelector("#confirm-debt-import"),
   debtReportButton: document.querySelector("#export-person-debt-image"),
   debtExportStatus: document.querySelector("#debt-export-status"),
   debtTotalUnpaid: document.querySelector("#debt-total-unpaid"),
@@ -123,6 +137,7 @@ let historyDateTo = "";
 let historyPage = 1;
 let pendingDelete = null;
 let pendingDebtStatusUpdate = null;
+let pendingDebtImport = null;
 
 const formatMoney = (value) => `${money.format(Math.round(value || 0))} ₫`;
 
@@ -520,6 +535,122 @@ function exportDebtWorkbook() {
   }, 1800);
 }
 
+function formatImportStatus(status) {
+  return status === "paid" ? "Đã trả" : "Chưa trả";
+}
+
+function renderDebtImportRow(row) {
+  const hasErrors = row.errors.length > 0;
+  return `
+    <tr class="${hasErrors ? "has-error" : "is-valid"}">
+      <td>${row.rowNumber}</td>
+      <td>${escapeHtml(row.creditor || "—")}</td>
+      <td>${escapeHtml(row.debtor || "—")}</td>
+      <td>${row.amount > 0 ? escapeHtml(formatMoney(row.amount)) : "—"}</td>
+      <td>${row.date ? escapeHtml(formatDebtDate(row.date)) : "—"}</td>
+      <td>${escapeHtml(row.note || "—")}</td>
+      <td><span class="debt-import-status-pill ${row.status === "paid" ? "is-paid" : "is-unpaid"}">${formatImportStatus(row.status)}</span></td>
+      <td class="debt-import-check-cell">${hasErrors
+        ? `<strong>${escapeHtml(row.errors.join(" "))}</strong>`
+        : "<span>Hợp lệ</span>"}</td>
+    </tr>
+  `;
+}
+
+function showDebtImportDialog(preview, fileName) {
+  pendingDebtImport = { preview, fileName };
+  const hasFatalErrors = preview.fatalErrors.length > 0;
+  elements.debtImportSummary.innerHTML = `
+    <strong>${escapeHtml(fileName)}</strong>
+    <span>${preview.totalCount} dòng dữ liệu</span>
+    <span class="is-valid">${preview.validCount} hợp lệ</span>
+    <span class="${preview.errorCount ? "has-error" : "is-valid"}">${preview.errorCount} lỗi</span>
+  `;
+  elements.debtImportFatalError.hidden = !hasFatalErrors;
+  elements.debtImportFatalError.textContent = preview.fatalErrors.join(" ");
+  elements.debtImportReview.hidden = hasFatalErrors || preview.rows.length === 0;
+  elements.debtImportReviewBody.innerHTML = preview.rows.map(renderDebtImportRow).join("");
+  elements.confirmDebtImport.disabled = hasFatalErrors
+    || preview.validCount === 0
+    || preview.errorCount > 0;
+
+  if (typeof elements.debtImportDialog.showModal === "function") {
+    elements.debtImportDialog.showModal();
+  } else {
+    elements.debtImportDialog.setAttribute("open", "");
+  }
+  window.setTimeout(() => elements.debtImportSummary.focus(), 0);
+}
+
+async function reviewDebtImportFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  elements.debtImportButton.disabled = true;
+  elements.debtImportButton.textContent = "Đang đọc…";
+  elements.debtImportStatus.textContent = `Đang đọc ${file.name}.`;
+
+  try {
+    if (!file.name.toLocaleLowerCase().endsWith(".xlsx")) {
+      throw new Error("Hãy chọn file Excel có đuôi .xlsx.");
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error("File Excel cần nhỏ hơn 10 MB.");
+    }
+    const buffer = await file.arrayBuffer();
+    const rows = parseDebtWorkbook(buffer);
+    const preview = createDebtImportPreview(rows, {
+      savedAt: new Date().toISOString(),
+    });
+    elements.debtImportStatus.textContent = preview.fatalErrors.length
+      ? "File chưa đúng định dạng dữ liệu. Hãy xem chi tiết."
+      : `Đã đọc ${preview.totalCount} dòng. Hãy review trước khi nhập.`;
+    showDebtImportDialog(preview, file.name);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Không thể đọc file Excel.";
+    elements.debtImportStatus.textContent = message;
+    showDebtImportDialog({
+      rows: [],
+      entries: [],
+      totalCount: 0,
+      validCount: 0,
+      errorCount: 0,
+      fatalErrors: [message],
+    }, file.name);
+  } finally {
+    elements.debtImportButton.disabled = false;
+    elements.debtImportButton.textContent = "Nhập Excel";
+    elements.debtImportInput.value = "";
+  }
+}
+
+function confirmDebtImport() {
+  const preview = pendingDebtImport?.preview;
+  if (!preview || preview.fatalErrors.length || preview.errorCount || !preview.entries.length) return;
+  try {
+    debtEntries = upsertImportedDebtEntries(localStorage, preview.entries);
+  } catch (error) {
+    elements.debtImportFatalError.hidden = false;
+    elements.debtImportFatalError.textContent = error?.code === "DEBT_LEDGER_CAPACITY_EXCEEDED"
+      ? error.message
+      : "Trình duyệt chưa thể lưu dữ liệu. Hãy kiểm tra quyền lưu trữ rồi thử lại.";
+    elements.confirmDebtImport.disabled = true;
+    return;
+  }
+
+  const importedCount = preview.entries.length;
+  debtPersonFilter = "";
+  debtYearFilter = "";
+  debtPage = 1;
+  selectedDebtIds.clear();
+  if (typeof elements.debtImportDialog.close === "function") {
+    elements.debtImportDialog.close();
+  } else {
+    elements.debtImportDialog.removeAttribute("open");
+  }
+  renderDebtLedger();
+  elements.debtImportStatus.textContent = `Đã nhập hoặc cập nhật ${importedCount} khoản từ Excel.`;
+}
+
 function drawRoundedRect(context, x, y, width, height, radius, fill) {
   const corner = Math.min(radius, width / 2, height / 2);
   context.beginPath();
@@ -885,6 +1016,13 @@ elements.debtFilter.addEventListener("change", (event) => {
 
 elements.debtExportButton.addEventListener("click", exportDebtWorkbook);
 elements.debtReportButton.addEventListener("click", exportPersonDebtReportImage);
+elements.debtImportButton.addEventListener("click", () => elements.debtImportInput.click());
+elements.debtImportInput.addEventListener("change", reviewDebtImportFile);
+elements.confirmDebtImport.addEventListener("click", confirmDebtImport);
+elements.debtImportDialog.addEventListener("close", () => {
+  pendingDebtImport = null;
+  window.setTimeout(() => elements.debtImportButton.focus(), 0);
+});
 
 elements.openManualDebt.addEventListener("click", openManualDebtDialog);
 elements.openManualDebtEmpty.addEventListener("click", openManualDebtDialog);

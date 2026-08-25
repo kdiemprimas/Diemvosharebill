@@ -166,6 +166,31 @@ export function upsertDebtEntries(storage = localStorage, billId, newEntries = [
   return records;
 }
 
+export function upsertImportedDebtEntries(storage = localStorage, newEntries = []) {
+  const seenImportedIds = new Set();
+  const normalizedEntries = (Array.isArray(newEntries) ? newEntries : [])
+    .map(normalizeDebtEntry)
+    .filter((entry) => {
+      if (!entry || seenImportedIds.has(entry.id)) return false;
+      seenImportedIds.add(entry.id);
+      return true;
+    });
+  if (!normalizedEntries.length) return readDebtEntries(storage);
+  const importedIds = new Set(normalizedEntries.map(({ id }) => id));
+  const combined = [
+    ...normalizedEntries,
+    ...readDebtEntries(storage).filter(({ id }) => !importedIds.has(id)),
+  ];
+  if (combined.length > MAX_DEBT_ENTRIES) {
+    const error = new RangeError(`Sổ tiền chia lưu tối đa 1.000 khoản. Hãy xóa bớt dữ liệu trước khi nhập file này.`);
+    error.code = "DEBT_LEDGER_CAPACITY_EXCEEDED";
+    throw error;
+  }
+  const records = combined.sort(sortDebtEntries);
+  storage.setItem(DEBT_STORAGE_KEY, JSON.stringify(records));
+  return records;
+}
+
 export function preserveDebtStatuses(newEntries = [], existingEntries = []) {
   const savedStatuses = new Map(
     existingEntries

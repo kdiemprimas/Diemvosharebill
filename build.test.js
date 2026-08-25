@@ -22,6 +22,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
     "bill-history.js",
     "debt-ledger.js",
     "debt-export.js",
+    "debt-import.js",
     "debt-status-update.js",
     "history-delete-confirmation.js",
     "assets/teolaegi-pet-logo.png",
@@ -99,6 +100,11 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /id="debt-person-filter"/);
   assert.match(historyHtml, /id="debt-year-filter"/);
   assert.match(historyHtml, /id="export-debt-excel"/);
+  assert.match(historyHtml, /id="debt-import-input"[^>]+type="file"[^>]+accept="\.xlsx"/);
+  assert.match(historyHtml, /id="open-debt-import"/);
+  assert.match(historyHtml, /<dialog[^>]+id="debt-import-dialog"/);
+  assert.match(historyHtml, /id="debt-import-review"/);
+  assert.match(historyHtml, /id="confirm-debt-import"[^>]+disabled/);
   assert.match(historyHtml, /id="debt-export-status"[^>]+aria-live="polite"/);
   assert.match(historyHtml, /id="debt-total-paid"/);
   assert.match(historyHtml, /id="debt-pagination"/);
@@ -144,12 +150,14 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyApp, /bill-history\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /debt-ledger\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /debt-export\.js\?v=[a-f0-9]{12}/);
+  assert.match(historyApp, /debt-import\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /history-delete-confirmation\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /createDebtWorkbook/);
   assert.match(historyApp, /createManualDebtEntry/);
   assert.match(historyApp, /formatDebtAmountInput/);
   assert.match(historyApp, /parseDebtAmountInput/);
   assert.match(historyApp, /upsertDebtEntries/);
+  assert.match(historyApp, /upsertImportedDebtEntries/);
   assert.match(historyApp, /updateDebtStatuses/);
   assert.match(historyApp, /removeDebtEntries/);
   const css = await readFile(join(outputDir, "styles.css"), "utf8");

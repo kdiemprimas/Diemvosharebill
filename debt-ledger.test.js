@@ -18,6 +18,7 @@ import {
   updateDebtStatuses,
   updateDebtStatus,
   upsertDebtEntries,
+  upsertImportedDebtEntries,
 } from "./debt-ledger.js";
 
 function createMemoryStorage(initial = {}) {
@@ -156,6 +157,46 @@ test("lưu lại cùng bill sẽ cập nhật thay vì nhân đôi các khoản"
   assert.equal(records[0].note, "Bill đã sửa");
   assert.equal(records[0].status, "paid");
   assert.equal(JSON.parse(storage.getItem(DEBT_STORAGE_KEY)).length, 1);
+});
+
+test("nhập nhiều khoản Excel trong một lần và nhập lại không tạo bản sao", () => {
+  const storage = createMemoryStorage();
+  const imported = parseDebtEntries(JSON.stringify([
+    { id: "import:file:2", billId: "import:file:2", creditor: "Diem", debtor: "Tin", amount: 16000, date: "2026-08-18", status: "unpaid", savedAt: "2026-08-25T10:00:00Z" },
+    { id: "import:file:3", billId: "import:file:3", creditor: "Diem", debtor: "Son", amount: 35000, date: "2026-08-19", status: "paid", savedAt: "2026-08-25T10:00:00Z" },
+  ]));
+
+  const first = upsertImportedDebtEntries(storage, imported);
+  const second = upsertImportedDebtEntries(storage, imported);
+
+  assert.equal(first.length, 2);
+  assert.equal(second.length, 2);
+  assert.deepEqual(second.map(({ id }) => id).sort(), ["import:file:2", "import:file:3"]);
+  assert.equal(JSON.parse(storage.getItem(DEBT_STORAGE_KEY)).length, 2);
+});
+
+test("không ghi đè hoặc làm rơi dữ liệu khi sổ đã đủ 1000 khoản", () => {
+  const existing = Array.from({ length: 1000 }, (_, index) => ({
+    id: `entry-${index}`,
+    billId: `bill-${index}`,
+    creditor: "Diem",
+    debtor: `Người ${index}`,
+    amount: 10000,
+    date: "2026-08-20",
+    status: "unpaid",
+    savedAt: "2026-08-20T10:00:00Z",
+  }));
+  const storage = createMemoryStorage({ [DEBT_STORAGE_KEY]: JSON.stringify(existing) });
+  const imported = parseDebtEntries(JSON.stringify([
+    { id: "import:new:1", billId: "import:new:1", creditor: "Diem", debtor: "Tin", amount: 16000, date: "2026-08-18", status: "unpaid", savedAt: "2026-08-25T10:00:00Z" },
+  ]));
+
+  assert.throws(
+    () => upsertImportedDebtEntries(storage, imported),
+    /tối đa 1\.000 khoản/i,
+  );
+  assert.equal(JSON.parse(storage.getItem(DEBT_STORAGE_KEY)).length, 1000);
+  assert.equal(JSON.parse(storage.getItem(DEBT_STORAGE_KEY)).some(({ id }) => id === "import:new:1"), false);
 });
 
 test("cập nhật bill vẫn giữ trạng thái đã trả của từng người", () => {

@@ -104,6 +104,16 @@
               <button class="debt-add-button" id="open-manual-debt" type="button">
                 + Thêm khoản nợ
               </button>
+              <input
+                hidden
+                id="debt-import-input"
+                type="file"
+                accept=".xlsx"
+                aria-label="Chọn file Excel để nhập vào sổ tiền chia"
+              />
+              <button class="debt-export-button debt-import-button" id="open-debt-import" type="button">
+                Nhập Excel
+              </button>
               <button class="debt-export-button" id="export-debt-excel" type="button" disabled>
                 Xuất Excel
               </button>
@@ -132,6 +142,7 @@
                 Xóa sổ tiền chia
               </button>
               <span class="debt-export-status" id="debt-export-status" role="status" aria-live="polite" aria-atomic="true"></span>
+              <span class="debt-export-status" id="debt-import-status" role="status" aria-live="polite" aria-atomic="true"></span>
             </div>
           </div>
 
@@ -256,6 +267,61 @@
         <p>Lịch sử chỉ được lưu trên trình duyệt của bạn.</p>
       </footer>
     </div>
+
+    <dialog
+      class="confirm-dialog debt-import-dialog"
+      id="debt-import-dialog"
+      aria-labelledby="debt-import-title"
+      aria-describedby="debt-import-description"
+    >
+      <div class="confirm-dialog-content debt-import-dialog-content">
+        <div class="confirm-dialog-copy debt-import-heading">
+          <span class="confirm-dialog-eyebrow">Kiểm tra trước khi nhập</span>
+          <h2 id="debt-import-title">Review dữ liệu Excel</h2>
+          <p id="debt-import-description">
+            Chưa có dữ liệu nào được lưu. Hãy kiểm tra các dòng bên dưới trước khi xác nhận nhập chính thức.
+          </p>
+        </div>
+        <div class="debt-import-summary" id="debt-import-summary" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
+        <p class="debt-import-fatal-error" id="debt-import-fatal-error" role="alert" hidden></p>
+        <div
+          class="debt-import-review"
+          id="debt-import-review"
+          role="region"
+          aria-label="Dữ liệu Excel chờ nhập"
+          aria-describedby="debt-import-review-hint"
+          tabindex="0"
+        >
+          <table class="debt-import-table">
+            <caption class="visually-hidden">Các khoản tiền đọc từ file Excel và kết quả kiểm tra</caption>
+            <thead>
+              <tr>
+                <th scope="col">Dòng</th>
+                <th scope="col">Chủ nợ</th>
+                <th scope="col">Con nợ</th>
+                <th scope="col">Tiền</th>
+                <th scope="col">Ngày</th>
+                <th scope="col">Ghi chú</th>
+                <th scope="col">Status</th>
+                <th scope="col">Kiểm tra</th>
+              </tr>
+            </thead>
+            <tbody id="debt-import-review-body"></tbody>
+          </table>
+        </div>
+        <p class="debt-import-review-hint" id="debt-import-review-hint">
+          Dòng có lỗi cần được sửa trong file Excel rồi chọn lại file. Kéo ngang để xem đủ các cột.
+        </p>
+        <form class="confirm-dialog-actions debt-import-actions" method="dialog">
+          <button class="confirm-dialog-cancel" id="cancel-debt-import" type="submit" value="cancel">
+            Hủy
+          </button>
+          <button class="confirm-dialog-submit" id="confirm-debt-import" type="button" disabled>
+            Nhập chính thức
+          </button>
+        </form>
+      </div>
+    </dialog>
 
     <dialog
       class="confirm-dialog save-debt-dialog manual-debt-dialog"

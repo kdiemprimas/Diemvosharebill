@@ -1,0 +1,246 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { strToU8, zipSync } from "fflate";
+import { createDebtWorkbook } from "./debt-export.js";
+import {
+  createDebtImportPreview,
+  parseDebtWorkbook,
+} from "./debt-import.js";
+
+const SAVED_AT = "2026-08-25T10:00:00.000Z";
+
+function excelSerial(dateKey) {
+  return Date.parse(`${dateKey}T00:00:00.000Z`) / 86400000 + 25569;
+}
+
+test("đọc đúng format Excel mẫu và chuẩn hóa dữ liệu để review", () => {
+  const preview = createDebtImportPreview([
+    ["STT", "Chủ Nợ", "Con Nợ", "Tiền", "NGÀY", "GHI CHÚ", "STATUS"],
+    [1, "Diem Vo", "Son Vo", 38000, excelSerial("2024-05-09"), "cơm gà", ""],
+    [2, "Diem Vo", "Tin Nguyen", "16,000", "11/13/2024", "trà sữa", "Đã Trả"],
+  ], { sourceKey: "file-abc", savedAt: SAVED_AT });
+
+  assert.equal(preview.fatalErrors.length, 0);
+  assert.equal(preview.totalCount, 2);
+  assert.equal(preview.validCount, 2);
+  assert.equal(preview.errorCount, 0);
+  assert.match(preview.entries[0].id, /^import:[a-f0-9]{16}:1$/);
+  assert.equal(preview.entries[0].billId, preview.entries[0].id);
+  assert.equal(preview.entries[1].billId, preview.entries[1].id);
+  assert.deepEqual(preview.entries.map(({ id, billId, ...entry }) => entry), [
+    {
+      creditor: "Diem Vo",
+      debtor: "Son Vo",
+      amount: 38000,
+      date: "2024-05-09",
+      note: "cơm gà",
+      status: "unpaid",
+      savedAt: SAVED_AT,
+    },
+    {
+      creditor: "Diem Vo",
+      debtor: "Tin Nguyen",
+      amount: 16000,
+      date: "2024-11-13",
+      note: "trà sữa",
+      status: "paid",
+      savedAt: SAVED_AT,
+    },
+  ]);
+});
+
+test("chấp nhận tên cột Trạng thái do ứng dụng xuất ra", () => {
+  const preview = createDebtImportPreview([
+    ["STT", "Chủ nợ", "Con nợ", "Tiền", "Ngày", "Ghi chú", "Trạng thái"],
+    [1, "Diem", "Tin", 25000, "2026-08-20", "Cà phê", "Chưa trả"],
+  ], { sourceKey: "exported", savedAt: SAVED_AT });
+
+  assert.equal(preview.validCount, 1);
+  assert.equal(preview.entries[0].status, "unpaid");
+});
+
+test("giữ đúng ngày khi ô Excel có kèm phần giờ", () => {
+  const preview = createDebtImportPreview([
+    ["Chủ nợ", "Con nợ", "Tiền", "Ngày"],
+    ["Diem", "Tin", 25000, excelSerial("2026-08-20") + 0.75],
+  ], { sourceKey: "date-time", savedAt: SAVED_AT });
+
+  assert.equal(preview.entries[0].date, "2026-08-20");
+});
+
+test("tạo mã ổn định theo nội dung dù file được Excel lưu lại", () => {
+  const rows = [
+    ["Chủ nợ", "Con nợ", "Tiền", "Ngày", "Ghi chú", "STATUS"],
+    ["Diem", "Tin", 25000, "2026-08-20", "Bữa trưa", "Chưa trả"],
+  ];
+  const first = createDebtImportPreview(rows, { sourceKey: "zip-a", savedAt: SAVED_AT });
+  const resaved = createDebtImportPreview(rows, { sourceKey: "zip-b", savedAt: SAVED_AT });
+
+  assert.equal(first.entries[0].id, resaved.entries[0].id);
+});
+
+test("hỗ trợ các tên cột tương đương và kiểu ngày phổ biến", () => {
+  const preview = createDebtImportPreview([
+    ["Số thứ tự", "Người ứng", "Người nợ", "Số tiền", "Date", "Nội dung", "Trạng thái"],
+    [1, "Diem", "Tin", "25.000 ₫", new Date(2026, 7, 20), "Bữa trưa", "Đã thanh toán"],
+    [2, "Diem", "Son", "18,000", "20/08/2026", "Cà phê", "unpaid"],
+  ], { sourceKey: "aliases", savedAt: SAVED_AT });
+
+  assert.equal(preview.validCount, 2);
+  assert.deepEqual(preview.entries.map(({ date, amount, status }) => ({ date, amount, status })), [
+    { date: "2026-08-20", amount: 25000, status: "paid" },
+    { date: "2026-08-20", amount: 18000, status: "unpaid" },
+  ]);
+});
+
+test("báo lỗi cho file rỗng và file vượt giới hạn 1000 dòng", () => {
+  const empty = createDebtImportPreview([], { sourceKey: "empty", savedAt: SAVED_AT });
+  assert.match(empty.fatalErrors.join(" "), /không có dữ liệu/i);
+
+  const oversized = createDebtImportPreview([
+    ["Chủ nợ", "Con nợ", "Tiền", "Ngày"],
+    ...Array.from({ length: 1001 }, () => ["Diem", "Tin", 10000, "2026-08-20"]),
+  ], { sourceKey: "large", savedAt: SAVED_AT });
+  assert.equal(oversized.totalCount, 1001);
+  assert.match(oversized.fatalErrors.join(" "), /tối đa 1000/i);
+});
+
+test("báo lỗi rõ từng dòng và không đưa dòng lỗi vào danh sách sẽ nhập", () => {
+  const preview = createDebtImportPreview([
+    ["STT", "Chủ Nợ", "Con Nợ", "Tiền", "NGÀY", "GHI CHÚ", "STATUS"],
+    [1, "Diem", "Diem", 38000, "2024-05-09", "trùng người", ""],
+    [2, "Diem", "Tin", 0, "2024-05-09", "không có tiền", ""],
+    [3, "Diem", "Tin", 12000, "không phải ngày", "sai ngày", ""],
+    [4, "Diem", "Tin", 12000, "2024-05-09", "sai trạng thái", "đang chờ"],
+    [],
+  ], { sourceKey: "invalid", savedAt: SAVED_AT });
+
+  assert.equal(preview.totalCount, 4);
+  assert.equal(preview.validCount, 0);
+  assert.equal(preview.errorCount, 4);
+  assert.equal(preview.entries.length, 0);
+  assert.match(preview.rows[0].errors.join(" "), /khác nhau/i);
+  assert.match(preview.rows[1].errors.join(" "), /lớn hơn 0/i);
+  assert.match(preview.rows[2].errors.join(" "), /ngày/i);
+  assert.match(preview.rows[3].errors.join(" "), /trạng thái/i);
+});
+
+test("dừng review khi file thiếu cột bắt buộc", () => {
+  const preview = createDebtImportPreview([
+    ["STT", "Con Nợ", "Tiền", "NGÀY"],
+    [1, "Tin", 12000, "2026-08-20"],
+  ], { sourceKey: "missing", savedAt: SAVED_AT });
+
+  assert.equal(preview.totalCount, 0);
+  assert.equal(preview.validCount, 0);
+  assert.match(preview.fatalErrors.join(" "), /Chủ nợ/);
+});
+
+test("dừng review khi có hai cột cùng ý nghĩa", () => {
+  const preview = createDebtImportPreview([
+    ["Chủ nợ", "Con nợ", "Tiền", "Số tiền", "Ngày"],
+    ["Diem", "Tin", 12000, 13000, "2026-08-20"],
+  ], { sourceKey: "duplicate-header", savedAt: SAVED_AT });
+
+  assert.equal(preview.validCount, 0);
+  assert.match(preview.fatalErrors.join(" "), /cột.*lặp.*Tiền|trùng/i);
+});
+
+test("đọc lại được chính file xlsx mà ứng dụng xuất", () => {
+  const workbook = createDebtWorkbook([
+    {
+      id: "entry-1",
+      billId: "bill-1",
+      creditor: "Diem Vo",
+      debtor: "Tin Nguyen",
+      amount: 35000,
+      date: "2025-07-28",
+      note: "cơm gà",
+      status: "paid",
+      savedAt: SAVED_AT,
+    },
+  ]);
+
+  const rows = parseDebtWorkbook(workbook);
+  const preview = createDebtImportPreview(rows, {
+    sourceKey: "round-trip",
+    savedAt: SAVED_AT,
+  });
+
+  assert.equal(preview.validCount, 1);
+  assert.deepEqual(
+    preview.entries.map(({ creditor, debtor, amount, date, note, status }) => ({
+      creditor, debtor, amount, date, note, status,
+    })),
+    [{
+      creditor: "Diem Vo",
+      debtor: "Tin Nguyen",
+      amount: 35000,
+      date: "2025-07-28",
+      note: "cơm gà",
+      status: "paid",
+    }],
+  );
+});
+
+test("đọc workbook dùng shared strings như file Excel thông thường", () => {
+  const sharedStrings = ["Chủ Nợ", "Con Nợ", "Tiền", "NGÀY", "STATUS", "Diem", "Tin", "Đã Trả"];
+  const sharedXml = `<?xml version="1.0"?><sst>${sharedStrings.map((value) => `<si><t>${value}</t></si>`).join("")}</sst>`;
+  const sheetXml = `<?xml version="1.0"?><worksheet><sheetData>
+    <row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c><c r="D1" t="s"><v>3</v></c><c r="E1" t="s"><v>4</v></c></row>
+    <row r="2"><c r="A2" t="s"><v>5</v></c><c r="B2" t="s"><v>6</v></c><c r="C2"><v>32000</v></c><c r="D2"><v>${excelSerial("2026-08-20")}</v></c><c r="E2" t="s"><v>7</v></c></row>
+  </sheetData></worksheet>`;
+  const workbook = zipSync({
+    "xl/worksheets/sheet1.xml": strToU8(sheetXml),
+    "xl/sharedStrings.xml": strToU8(sharedXml),
+  });
+
+  const preview = createDebtImportPreview(parseDebtWorkbook(workbook), {
+    sourceKey: "shared",
+    savedAt: SAVED_AT,
+  });
+
+  assert.equal(preview.validCount, 1);
+  assert.equal(preview.entries[0].status, "paid");
+  assert.equal(preview.entries[0].amount, 32000);
+});
+
+test("đọc đúng ngày từ workbook dùng hệ ngày 1904", () => {
+  const date1904Serial = Date.parse("2026-08-20T00:00:00.000Z") / 86400000 + 24107;
+  const workbook = zipSync({
+    "xl/workbook.xml": strToU8('<?xml version="1.0"?><workbook><workbookPr date1904="1"/><sheets><sheet r:id="rId1"/></sheets></workbook>'),
+    "xl/_rels/workbook.xml.rels": strToU8('<?xml version="1.0"?><Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>'),
+    "xl/worksheets/sheet1.xml": strToU8(`<?xml version="1.0"?><worksheet><sheetData>
+      <row r="1"><c r="A1" t="inlineStr"><is><t>Chủ nợ</t></is></c><c r="B1" t="inlineStr"><is><t>Con nợ</t></is></c><c r="C1" t="inlineStr"><is><t>Tiền</t></is></c><c r="D1" t="inlineStr"><is><t>Ngày</t></is></c></row>
+      <row r="2"><c r="A2" t="inlineStr"><is><t>Diem</t></is></c><c r="B2" t="inlineStr"><is><t>Tin</t></is></c><c r="C2"><v>32000</v></c><c r="D2"><v>${date1904Serial}</v></c></row>
+    </sheetData></worksheet>`),
+  });
+
+  const rows = parseDebtWorkbook(workbook);
+  const preview = createDebtImportPreview(rows, { sourceKey: "mac", savedAt: SAVED_AT });
+
+  assert.equal(preview.entries[0].date, "2026-08-20");
+});
+
+test("từ chối worksheet khai báo số dòng cực lớn", () => {
+  const workbook = zipSync({
+    "xl/worksheets/sheet1.xml": strToU8('<?xml version="1.0"?><worksheet><sheetData><row r="1000000000"><c r="A1000000000" t="inlineStr"><is><t>x</t></is></c></row></sheetData></worksheet>'),
+  });
+
+  assert.throws(() => parseDebtWorkbook(workbook), /Excel|xlsx/i);
+});
+
+test("từ chối nội dung không phải workbook xlsx", () => {
+  assert.throws(
+    () => parseDebtWorkbook(new TextEncoder().encode("not an xlsx file")),
+    /Excel|xlsx/i,
+  );
+});
+
+test("từ chối workbook có nội dung giải nén vượt giới hạn an toàn", () => {
+  const oversizedWorkbook = zipSync({
+    "xl/worksheets/sheet1.xml": strToU8("x".repeat(8 * 1024 * 1024 + 1)),
+  }, { level: 9 });
+
+  assert.throws(() => parseDebtWorkbook(oversizedWorkbook), /Excel|xlsx/i);
+});
