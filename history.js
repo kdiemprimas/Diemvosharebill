@@ -676,24 +676,30 @@ function fitCanvasText(context, value, maxWidth) {
   return `${fitted}…`;
 }
 
-function getReportCreditorRows(creditors, maxRows = 6) {
-  if (creditors.length <= maxRows) return creditors;
-  const visible = creditors.slice(0, maxRows - 1);
-  const remaining = creditors.slice(maxRows - 1);
+function getReportDebtRows(unpaidEntries, maxRows = 16) {
+  if (unpaidEntries.length <= maxRows) return unpaidEntries;
+  const visible = unpaidEntries.slice(0, maxRows - 1);
+  const remaining = unpaidEntries.slice(maxRows - 1);
   return [
     ...visible,
     {
-      name: `${remaining.length} chủ nợ khác`,
+      creditor: "Xem trong sổ tiền chia",
       amount: remaining.reduce((total, { amount }) => total + amount, 0),
-      unpaidCount: remaining.reduce((total, { unpaidCount }) => total + unpaidCount, 0),
+      date: "",
+      note: `Còn ${remaining.length} khoản khác`,
+      isRemainder: true,
     },
   ];
 }
 
 function drawPersonDebtReport(report) {
+  const debtRows = getReportDebtRows(report.unpaidEntries);
+  const listStartY = 720;
+  const listHeight = debtRows.length ? debtRows.length * 112 : 180;
+  const footerY = listStartY + listHeight + 86;
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
-  canvas.height = 1350;
+  canvas.height = Math.max(1120, footerY + 96);
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Canvas is unavailable");
 
@@ -735,10 +741,10 @@ function drawPersonDebtReport(report) {
 
   context.fillStyle = "#2f3e46";
   context.font = "800 32px system-ui, sans-serif";
-  context.fillText("Chi tiết theo chủ nợ", 100, 680);
+  context.fillText("Các khoản chưa trả", 100, 680);
 
-  if (!report.creditors.length) {
-    drawRoundedRect(context, 100, 720, 880, 180, 28, "#edf6f1");
+  if (!debtRows.length) {
+    drawRoundedRect(context, 100, listStartY, 880, 180, 28, "#edf6f1");
     context.fillStyle = "#3f7168";
     context.font = "800 32px system-ui, sans-serif";
     context.fillText("Không còn khoản nào cần trả", 150, 795);
@@ -746,19 +752,22 @@ function drawPersonDebtReport(report) {
     context.font = "500 24px system-ui, sans-serif";
     context.fillText("Mọi khoản đã ghi nhận đều có trạng thái đã trả.", 150, 845);
   } else {
-    getReportCreditorRows(report.creditors).forEach((creditor, index) => {
-      const y = 720 + index * 90;
-      if (index % 2 === 0) drawRoundedRect(context, 100, y - 40, 880, 78, 18, "#f6f0e8");
+    debtRows.forEach((entry, index) => {
+      const y = listStartY + index * 112;
+      drawRoundedRect(context, 100, y, 880, 96, 20, index % 2 === 0 ? "#f6f0e8" : "#fffdf9");
       context.fillStyle = "#2f3e46";
-      context.font = "700 27px system-ui, sans-serif";
-      context.fillText(fitCanvasText(context, creditor.name, 440), 135, y + 9);
+      context.font = "700 25px system-ui, sans-serif";
+      context.fillText(fitCanvasText(context, entry.note || "Khoản chưa ghi chú", 500), 135, y + 36);
       context.fillStyle = "#847976";
       context.font = "500 20px system-ui, sans-serif";
-      context.fillText(`${creditor.unpaidCount} khoản`, 590, y + 8);
+      const detail = entry.isRemainder
+        ? "Đã tính trong tổng còn phải trả"
+        : `${formatDebtDate(entry.date)} · Trả cho ${entry.creditor}`;
+      context.fillText(fitCanvasText(context, detail, 555), 135, y + 70);
       context.fillStyle = "#a54e54";
       context.font = "800 27px system-ui, sans-serif";
       context.textAlign = "right";
-      context.fillText(formatMoney(creditor.amount), 945, y + 9);
+      context.fillText(formatMoney(entry.amount), 945, y + 54);
       context.textAlign = "left";
     });
   }
@@ -766,15 +775,15 @@ function drawPersonDebtReport(report) {
   context.strokeStyle = "#d8d0c8";
   context.setLineDash([10, 10]);
   context.beginPath();
-  context.moveTo(100, 1245);
-  context.lineTo(980, 1245);
+  context.moveTo(100, footerY);
+  context.lineTo(980, footerY);
   context.stroke();
   context.setLineDash([]);
   context.fillStyle = "#7b706d";
   context.font = "500 21px system-ui, sans-serif";
-  context.fillText(`Xuất ngày ${report.generatedDate}`, 100, 1302);
+  context.fillText(`Xuất ngày ${report.generatedDate}`, 100, footerY + 57);
   context.textAlign = "right";
-  context.fillText("Lưu từ sổ tiền chia", 980, 1302);
+  context.fillText("Lưu từ sổ tiền chia", 980, footerY + 57);
   context.textAlign = "left";
   return canvas;
 }

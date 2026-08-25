@@ -223,6 +223,7 @@ export function createPersonDebtReport(
   if (!matchingEntries.length) return null;
 
   const creditors = new Map();
+  const unpaidEntries = [];
   let totalUnpaid = 0;
   let totalPaid = 0;
   let unpaidCount = 0;
@@ -236,6 +237,12 @@ export function createPersonDebtReport(
     totalUnpaid += amount;
     unpaidCount += 1;
     const creditorName = String(entry?.creditor || "").trim() || "Chưa xác định";
+    unpaidEntries.push({
+      creditor: creditorName,
+      amount,
+      date: String(entry?.date || "").trim(),
+      note: String(entry?.note || "").trim(),
+    });
     const creditorKey = normalizeName(creditorName);
     const creditor = creditors.get(creditorKey) || {
       name: creditorName,
@@ -255,6 +262,11 @@ export function createPersonDebtReport(
     totalPaid,
     unpaidCount,
     entryCount: matchingEntries.length,
+    unpaidEntries: unpaidEntries.sort((left, right) =>
+      right.date.localeCompare(left.date)
+      || right.amount - left.amount
+      || left.creditor.localeCompare(right.creditor, "vi"),
+    ),
     creditors: [...creditors.values()].sort((left, right) =>
       right.amount - left.amount || left.name.localeCompare(right.name, "vi"),
     ),

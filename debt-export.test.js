@@ -34,6 +34,10 @@ test("tạo báo cáo còn nợ của đúng một người và cộng theo từ
       totalPaid: 35000,
       unpaidCount: 2,
       entryCount: 3,
+      unpaidEntries: [
+        { creditor: "Son", amount: 38000, date: "2026-08-20", note: "Vé phim" },
+        { creditor: "Diem", amount: 16000, date: "2026-08-18", note: "Trà sữa" },
+      ],
       creditors: [
         { name: "Son", amount: 38000, unpaidCount: 1 },
         { name: "Diem", amount: 16000, unpaidCount: 1 },
@@ -66,6 +70,7 @@ test("báo cáo cho biết đã trả hết và không được tạo khi chưa 
   assert.equal(report.totalUnpaid, 0);
   assert.equal(report.totalPaid, 24250);
   assert.equal(report.unpaidCount, 0);
+  assert.deepEqual(report.unpaidEntries, []);
   assert.deepEqual(report.creditors, []);
   assert.equal(createPersonDebtReport(entries, "", "", new Date()), null);
   assert.equal(createPersonDebtReport(entries, "không có", "", new Date()), null);
