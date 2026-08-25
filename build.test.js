@@ -28,6 +28,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
     "assets/teolaegi-pet-logo.png",
     "assets/teolaegi-spritesheet.webp",
     "assets/melo-spritesheet.webp",
+    "assets/payment-qr-bidv.png",
     ".nojekyll",
     "node_modules/tesseract.js/dist/tesseract.esm.min.js",
     "node_modules/tesseract.js/dist/worker.min.js",
@@ -151,6 +152,7 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyApp, /debt-ledger\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /debt-export\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /debt-import\.js\?v=[a-f0-9]{12}/);
+  assert.match(historyApp, /payment-qr-bidv\.png\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /history-delete-confirmation\.js\?v=[a-f0-9]{12}/);
   assert.match(historyApp, /createDebtWorkbook/);
   assert.match(historyApp, /createManualDebtEntry/);

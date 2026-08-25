@@ -23,6 +23,7 @@ const imageAssets = [
   "assets/teolaegi-pet-logo.png",
   "assets/teolaegi-spritesheet.webp",
   "assets/melo-spritesheet.webp",
+  "assets/payment-qr-bidv.png",
 ];
 
 export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
@@ -82,7 +83,11 @@ export async function buildStaticSite(outputDir = join(sourceRoot, "dist")) {
     .replace("./bill-history.js", `./bill-history.js?v=${assetVersion}`)
     .replace("./debt-ledger.js", `./debt-ledger.js?v=${assetVersion}`)
     .replace("./debt-export.js", `./debt-export.js?v=${assetVersion}`)
-    .replace("./debt-import.js", `./debt-import.js?v=${assetVersion}`);
+    .replace("./debt-import.js", `./debt-import.js?v=${assetVersion}`)
+    .replace(
+      "./assets/payment-qr-bidv.png",
+      `./assets/payment-qr-bidv.png?v=${assetVersion}`,
+    );
   const versionedHistoryAppWithStatusUpdate = versionedHistoryApp
     .replace("./debt-status-update.js", `./debt-status-update.js?v=${assetVersion}`)
     .replace(

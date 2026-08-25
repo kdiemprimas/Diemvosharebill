@@ -7,8 +7,18 @@ import {
   createDebtWorkbook,
   createDebtWorkbookFilename,
   getDebtExportEntries,
+  getDebtReportPaymentDetails,
   getDebtReportPeriodLabel,
 } from "./debt-export.js";
+
+test("cung cấp đúng thông tin nhận tiền cho ảnh báo cáo", () => {
+  assert.deepEqual(getDebtReportPaymentDetails(), {
+    bankName: "BIDV",
+    accountName: "VÕ THỊ KIỀU DIỄM",
+    accountNumber: "7101574886",
+    momoNumber: "0974853723",
+  });
+});
 
 test("dùng câu nhắc vui khi báo cáo không lọc theo năm", () => {
   assert.equal(getDebtReportPeriodLabel(""), "Một là trả tiền, Hai là đi tò");

@@ -32,6 +32,7 @@ import {
   createDebtWorkbook,
   createDebtWorkbookFilename,
   getDebtExportEntries,
+  getDebtReportPaymentDetails,
   getDebtReportPeriodLabel,
 } from "./debt-export.js";
 import {
@@ -125,6 +126,7 @@ const elements = {
 
 const DEBT_PAGE_SIZE = 10;
 const HISTORY_PAGE_SIZE = 5;
+const DEBT_REPORT_PAYMENT_QR = "./assets/payment-qr-bidv.png";
 let records = readHistory();
 let debtEntries = readDebtEntries();
 let debtPersonFilter = "";
@@ -692,11 +694,24 @@ function getReportDebtRows(unpaidEntries, maxRows = 16) {
   ];
 }
 
-function drawPersonDebtReport(report) {
+function loadDebtReportPaymentQr() {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Payment QR is unavailable"));
+    image.src = DEBT_REPORT_PAYMENT_QR;
+  });
+}
+
+async function drawPersonDebtReport(report) {
   const debtRows = getReportDebtRows(report.unpaidEntries);
   const listStartY = 720;
   const listHeight = debtRows.length ? debtRows.length * 112 : 180;
-  const footerY = listStartY + listHeight + 86;
+  const paymentStartY = listStartY + listHeight + 86;
+  const footerY = paymentStartY + 526;
+  const payment = getDebtReportPaymentDetails();
+  const paymentQr = await loadDebtReportPaymentQr().catch(() => null);
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
   canvas.height = Math.max(1120, footerY + 96);
@@ -772,6 +787,49 @@ function drawPersonDebtReport(report) {
     });
   }
 
+  context.fillStyle = "#2f3e46";
+  context.font = "800 32px system-ui, sans-serif";
+  context.fillText("Cách trả tiền", 100, paymentStartY);
+  drawRoundedRect(context, 100, paymentStartY + 40, 880, 400, 28, "#edf6f1");
+
+  if (paymentQr) {
+    const sourceSize = Math.min(paymentQr.naturalWidth * 0.66, paymentQr.naturalHeight * 0.56);
+    const sourceX = (paymentQr.naturalWidth - sourceSize) / 2;
+    const sourceY = paymentQr.naturalHeight * 0.17;
+    drawRoundedRect(context, 130, paymentStartY + 70, 340, 340, 24, "#ffffff");
+    context.drawImage(
+      paymentQr,
+      sourceX,
+      sourceY,
+      sourceSize,
+      sourceSize,
+      145,
+      paymentStartY + 85,
+      310,
+      310,
+    );
+  }
+
+  context.fillStyle = "#557f8e";
+  context.font = "800 21px system-ui, sans-serif";
+  context.fillText("QUÉT MÃ VIETQR", 515, paymentStartY + 105);
+  context.fillStyle = "#2f3e46";
+  context.font = "800 29px system-ui, sans-serif";
+  context.fillText(payment.bankName, 515, paymentStartY + 151);
+  context.font = "700 23px system-ui, sans-serif";
+  context.fillText(payment.accountName, 515, paymentStartY + 190);
+  context.fillStyle = "#6f6663";
+  context.font = "600 21px system-ui, sans-serif";
+  context.fillText(`STK ${payment.accountNumber}`, 515, paymentStartY + 226);
+
+  drawRoundedRect(context, 500, paymentStartY + 260, 430, 130, 22, "#fae5e2");
+  context.fillStyle = "#a54e54";
+  context.font = "800 20px system-ui, sans-serif";
+  context.fillText("HOẶC CHUYỂN MOMO", 530, paymentStartY + 302);
+  context.fillStyle = "#2f3e46";
+  context.font = "900 35px system-ui, sans-serif";
+  context.fillText("0974 853 723", 530, paymentStartY + 354);
+
   context.strokeStyle = "#d8d0c8";
   context.setLineDash([10, 10]);
   context.beginPath();
@@ -806,7 +864,7 @@ async function exportPersonDebtReportImage() {
   elements.debtReportButton.textContent = "Đang tạo ảnh…";
   elements.debtExportStatus.textContent = `Đang tạo báo cáo của ${report.personName}.`;
   try {
-    const canvas = drawPersonDebtReport(report);
+    const canvas = await drawPersonDebtReport(report);
     const blob = await canvasToPngBlob(canvas);
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

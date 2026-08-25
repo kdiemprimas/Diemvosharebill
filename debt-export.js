@@ -211,6 +211,15 @@ export function getDebtReportPeriodLabel(year = "") {
     : "Một là trả tiền, Hai là đi tò";
 }
 
+export function getDebtReportPaymentDetails() {
+  return {
+    bankName: "BIDV",
+    accountName: "VÕ THỊ KIỀU DIỄM",
+    accountNumber: "7101574886",
+    momoNumber: "0974853723",
+  };
+}
+
 export function createPersonDebtReport(
   entries = [],
   personFilter = "",
