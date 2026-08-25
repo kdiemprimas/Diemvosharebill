@@ -211,6 +211,13 @@ export function getDebtReportPeriodLabel(year = "") {
     : "Một là trả tiền, Hai là đi tò";
 }
 
+export function getDebtReportGridLayout(itemCount = 0) {
+  const numericCount = Number(itemCount);
+  const count = Number.isFinite(numericCount) ? Math.max(0, Math.trunc(numericCount)) : 0;
+  const columns = count >= 5 ? 2 : 1;
+  return { columns, rows: Math.ceil(count / columns) };
+}
+
 export function getDebtReportPaymentDetails() {
   return {
     bankName: "BIDV",

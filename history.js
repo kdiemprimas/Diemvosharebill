@@ -32,6 +32,7 @@ import {
   createDebtWorkbook,
   createDebtWorkbookFilename,
   getDebtExportEntries,
+  getDebtReportGridLayout,
   getDebtReportPaymentDetails,
   getDebtReportPeriodLabel,
 } from "./debt-export.js";
@@ -706,8 +707,9 @@ function loadDebtReportPaymentQr() {
 
 async function drawPersonDebtReport(report) {
   const debtRows = getReportDebtRows(report.unpaidEntries);
+  const debtGrid = getDebtReportGridLayout(debtRows.length);
   const listStartY = 720;
-  const listHeight = debtRows.length ? debtRows.length * 112 : 180;
+  const listHeight = debtRows.length ? debtGrid.rows * 112 : 180;
   const paymentStartY = listStartY + listHeight + 86;
   const footerY = paymentStartY + 526;
   const payment = getDebtReportPaymentDetails();
@@ -768,21 +770,30 @@ async function drawPersonDebtReport(report) {
     context.fillText("Mọi khoản đã ghi nhận đều có trạng thái đã trả.", 150, 845);
   } else {
     debtRows.forEach((entry, index) => {
-      const y = listStartY + index * 112;
-      drawRoundedRect(context, 100, y, 880, 96, 20, index % 2 === 0 ? "#f6f0e8" : "#fffdf9");
+      const isCompact = debtGrid.columns === 2;
+      const column = index % debtGrid.columns;
+      const row = Math.floor(index / debtGrid.columns);
+      const x = isCompact ? 100 + column * 450 : 100;
+      const y = listStartY + row * 112;
+      const width = isCompact ? 430 : 880;
+      drawRoundedRect(context, x, y, width, 96, 20, index % 2 === 0 ? "#f6f0e8" : "#fffdf9");
       context.fillStyle = "#2f3e46";
-      context.font = "700 25px system-ui, sans-serif";
-      context.fillText(fitCanvasText(context, entry.note || "Khoản chưa ghi chú", 500), 135, y + 36);
+      context.font = `700 ${isCompact ? 22 : 25}px system-ui, sans-serif`;
+      context.fillText(
+        fitCanvasText(context, entry.note || "Khoản chưa ghi chú", isCompact ? 205 : 500),
+        x + 35,
+        y + 36,
+      );
       context.fillStyle = "#847976";
-      context.font = "500 20px system-ui, sans-serif";
+      context.font = `500 ${isCompact ? 17 : 20}px system-ui, sans-serif`;
       const detail = entry.isRemainder
         ? "Đã tính trong tổng còn phải trả"
         : `${formatDebtDate(entry.date)} · Trả cho ${entry.creditor}`;
-      context.fillText(fitCanvasText(context, detail, 555), 135, y + 70);
+      context.fillText(fitCanvasText(context, detail, isCompact ? 360 : 555), x + 35, y + 70);
       context.fillStyle = "#a54e54";
-      context.font = "800 27px system-ui, sans-serif";
+      context.font = `800 ${isCompact ? 23 : 27}px system-ui, sans-serif`;
       context.textAlign = "right";
-      context.fillText(formatMoney(entry.amount), 945, y + 54);
+      context.fillText(formatMoney(entry.amount), x + width - 25, y + 52);
       context.textAlign = "left";
     });
   }

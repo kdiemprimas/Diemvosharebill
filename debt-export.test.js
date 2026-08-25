@@ -7,9 +7,17 @@ import {
   createDebtWorkbook,
   createDebtWorkbookFilename,
   getDebtExportEntries,
+  getDebtReportGridLayout,
   getDebtReportPaymentDetails,
   getDebtReportPeriodLabel,
 } from "./debt-export.js";
+
+test("rút gọn ảnh báo cáo bằng hai cột khi có nhiều khoản nợ", () => {
+  assert.deepEqual(getDebtReportGridLayout(0), { columns: 1, rows: 0 });
+  assert.deepEqual(getDebtReportGridLayout(4), { columns: 1, rows: 4 });
+  assert.deepEqual(getDebtReportGridLayout(5), { columns: 2, rows: 3 });
+  assert.deepEqual(getDebtReportGridLayout(16), { columns: 2, rows: 8 });
+});
 
 test("cung cấp đúng thông tin nhận tiền cho ảnh báo cáo", () => {
   assert.deepEqual(getDebtReportPaymentDetails(), {
