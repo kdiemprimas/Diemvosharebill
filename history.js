@@ -274,8 +274,10 @@ function saveManualDebt(event) {
 
   try {
     debtEntries = upsertDebtEntries(localStorage, entry.billId, [entry]);
-  } catch {
-    showManualDebtError("Trình duyệt chưa thể lưu dữ liệu. Hãy kiểm tra quyền lưu trữ rồi thử lại.");
+  } catch (error) {
+    showManualDebtError(error?.code === "DEBT_LEDGER_CAPACITY_EXCEEDED"
+      ? error.message
+      : "Trình duyệt chưa thể lưu dữ liệu. Hãy kiểm tra quyền lưu trữ rồi thử lại.");
     return;
   }
   debtPersonFilter = normalizeName(entry.debtor);
@@ -546,7 +548,7 @@ function renderDebtImportRow(row) {
       <td>${row.rowNumber}</td>
       <td>${escapeHtml(row.creditor || "—")}</td>
       <td>${escapeHtml(row.debtor || "—")}</td>
-      <td>${row.amount > 0 ? escapeHtml(formatMoney(row.amount)) : "—"}</td>
+      <td>${row.amount !== 0 ? escapeHtml(formatMoney(row.amount)) : "—"}</td>
       <td>${row.date ? escapeHtml(formatDebtDate(row.date)) : "—"}</td>
       <td>${escapeHtml(row.note || "—")}</td>
       <td><span class="debt-import-status-pill ${row.status === "paid" ? "is-paid" : "is-unpaid"}">${formatImportStatus(row.status)}</span></td>

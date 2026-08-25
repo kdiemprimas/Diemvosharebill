@@ -3,6 +3,7 @@ import { strToU8, zipSync } from "fflate";
 const HEADERS = ["STT", "Chủ nợ", "Con nợ", "Tiền", "Ngày", "Ghi chú", "Trạng thái"];
 const EXCEL_EPOCH_OFFSET = 25569;
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
+const MAX_ABSOLUTE_DEBT_AMOUNT = Math.floor(Number.MAX_SAFE_INTEGER / 5000);
 
 function normalizeName(value) {
   return String(value || "").trim().toLocaleLowerCase("vi-VN");
@@ -10,7 +11,10 @@ function normalizeName(value) {
 
 function cleanAmount(value) {
   const number = Number(value);
-  return Number.isFinite(number) ? Math.max(0, Math.round(number)) : 0;
+  const rounded = Math.round(number);
+  return Number.isSafeInteger(rounded) && Math.abs(rounded) <= MAX_ABSOLUTE_DEBT_AMOUNT
+    ? rounded
+    : 0;
 }
 
 function safeDate(value) {
@@ -102,7 +106,7 @@ function createSheetXml(entries) {
       numberCell(`A${row}`, index + 1),
       inlineStringCell(`B${row}`, entry.creditor),
       inlineStringCell(`C${row}`, entry.debtor),
-      numberCell(`D${row}`, Math.max(0, Math.round(Number(entry.amount) || 0)), 2),
+      numberCell(`D${row}`, cleanAmount(entry.amount), 2),
       dateCell(`E${row}`, entry.date),
       inlineStringCell(`F${row}`, entry.note || ""),
       inlineStringCell(`G${row}`, isPaid ? "Đã trả" : "Chưa trả", isPaid ? 5 : 4),

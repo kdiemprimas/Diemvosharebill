@@ -42,6 +42,20 @@ test("tạo báo cáo còn nợ của đúng một người và cộng theo từ
   );
 });
 
+test("báo cáo cộng các khoản âm theo đúng dấu", () => {
+  const report = createPersonDebtReport([
+    { creditor: "Diem", debtor: "Tin", amount: 50000, date: "2026-08-20", status: "unpaid" },
+    { creditor: "Diem", debtor: "Tin", amount: -12000, date: "2026-08-21", status: "unpaid" },
+    { creditor: "Diem", debtor: "Tin", amount: -5000, date: "2026-08-22", status: "paid" },
+  ], "Tin", "2026", new Date("2026-08-25"));
+
+  assert.equal(report.totalUnpaid, 38000);
+  assert.equal(report.totalPaid, -5000);
+  assert.deepEqual(report.creditors, [
+    { name: "Diem", amount: 38000, unpaidCount: 2 },
+  ]);
+});
+
 test("báo cáo cho biết đã trả hết và không được tạo khi chưa chọn người", () => {
   const entries = [
     { creditor: "Diem", debtor: "Tiên Lê", amount: 24250, date: "2026-07-20", status: "paid" },
@@ -121,7 +135,7 @@ test("workbook vẫn an toàn khi dữ liệu rỗng hoặc có giá trị ngày
   ]));
   const sheet = strFromU8(files["xl/worksheets/sheet1.xml"]);
   assert.doesNotMatch(sheet, /\u0000/);
-  assert.match(sheet, /<c r="D2" s="2"><v>0<\/v><\/c>/);
+  assert.match(sheet, /<c r="D2" s="2"><v>-500<\/v><\/c>/);
   assert.match(sheet, /<c r="E2" s="0" t="inlineStr"/);
   assert.match(sheet, /<c r="E3" s="0" t="inlineStr"/);
   assert.deepEqual(getDebtExportEntries(null, "", ""), []);

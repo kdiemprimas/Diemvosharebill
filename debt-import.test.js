@@ -104,6 +104,31 @@ test("hỗ trợ các tên cột tương đương và kiểu ngày phổ biến"
   ]);
 });
 
+test("chấp nhận số tiền âm từ ô số và chuỗi có dấu trừ", () => {
+  const preview = createDebtImportPreview([
+    ["Chủ nợ", "Con nợ", "Tiền", "Ngày"],
+    ["Diem", "Tin", -124000, "2026-08-20"],
+    ["Diem", "Son", "- 38.000 ₫", "2026-08-21"],
+  ], { sourceKey: "negative-amounts", savedAt: SAVED_AT });
+
+  assert.equal(preview.validCount, 2);
+  assert.equal(preview.errorCount, 0);
+  assert.deepEqual(preview.entries.map(({ amount }) => amount), [-124000, -38000]);
+});
+
+test("từ chối số tiền quá lớn có thể làm tổng mất chính xác", () => {
+  const preview = createDebtImportPreview([
+    ["Chủ nợ", "Con nợ", "Tiền", "Ngày"],
+    ["Diem", "Tin", Number.MAX_SAFE_INTEGER, "2026-08-20"],
+    ["Diem", "Son", -Number.MAX_SAFE_INTEGER, "2026-08-21"],
+  ], { sourceKey: "unsafe-totals", savedAt: SAVED_AT });
+
+  assert.equal(preview.validCount, 0);
+  assert.equal(preview.errorCount, 2);
+  assert.match(preview.rows[0].errors.join(" "), /vượt quá/i);
+  assert.match(preview.rows[1].errors.join(" "), /vượt quá/i);
+});
+
 test("báo lỗi cho file rỗng và file vượt giới hạn 5000 dòng", () => {
   const empty = createDebtImportPreview([], { sourceKey: "empty", savedAt: SAVED_AT });
   assert.match(empty.fatalErrors.join(" "), /không có dữ liệu/i);
@@ -131,7 +156,7 @@ test("báo lỗi rõ từng dòng và không đưa dòng lỗi vào danh sách s
   assert.equal(preview.errorCount, 4);
   assert.equal(preview.entries.length, 0);
   assert.match(preview.rows[0].errors.join(" "), /khác nhau/i);
-  assert.match(preview.rows[1].errors.join(" "), /lớn hơn 0/i);
+  assert.match(preview.rows[1].errors.join(" "), /khác 0/i);
   assert.match(preview.rows[2].errors.join(" "), /ngày/i);
   assert.match(preview.rows[3].errors.join(" "), /trạng thái/i);
 });
@@ -170,6 +195,17 @@ test("đọc lại được chính file xlsx mà ứng dụng xuất", () => {
       status: "paid",
       savedAt: SAVED_AT,
     },
+    {
+      id: "entry-2",
+      billId: "bill-2",
+      creditor: "Diem Vo",
+      debtor: "Son Vo",
+      amount: -12000,
+      date: "2025-07-29",
+      note: "hoàn tiền",
+      status: "unpaid",
+      savedAt: SAVED_AT,
+    },
   ]);
 
   const rows = parseDebtWorkbook(workbook);
@@ -178,19 +214,29 @@ test("đọc lại được chính file xlsx mà ứng dụng xuất", () => {
     savedAt: SAVED_AT,
   });
 
-  assert.equal(preview.validCount, 1);
+  assert.equal(preview.validCount, 2);
   assert.deepEqual(
     preview.entries.map(({ creditor, debtor, amount, date, note, status }) => ({
       creditor, debtor, amount, date, note, status,
     })),
-    [{
-      creditor: "Diem Vo",
-      debtor: "Tin Nguyen",
-      amount: 35000,
-      date: "2025-07-28",
-      note: "cơm gà",
-      status: "paid",
-    }],
+    [
+      {
+        creditor: "Diem Vo",
+        debtor: "Tin Nguyen",
+        amount: 35000,
+        date: "2025-07-28",
+        note: "cơm gà",
+        status: "paid",
+      },
+      {
+        creditor: "Diem Vo",
+        debtor: "Son Vo",
+        amount: -12000,
+        date: "2025-07-29",
+        note: "hoàn tiền",
+        status: "unpaid",
+      },
+    ],
   );
 });
 

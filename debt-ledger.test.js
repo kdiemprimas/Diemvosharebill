@@ -175,8 +175,28 @@ test("nhập nhiều khoản Excel trong một lần và nhập lại không t�
   assert.equal(JSON.parse(storage.getItem(DEBT_STORAGE_KEY)).length, 2);
 });
 
-test("không ghi đè hoặc làm rơi dữ liệu khi sổ đã đủ 1000 khoản", () => {
-  const existing = Array.from({ length: 1000 }, (_, index) => ({
+test("lưu trọn file Excel 1260 dòng", () => {
+  const storage = createMemoryStorage();
+  const imported = Array.from({ length: 1260 }, (_, index) => ({
+    id: `import:file:${index + 1}`,
+    billId: `import:file:${index + 1}`,
+    creditor: "Diem",
+    debtor: `Người ${index + 1}`,
+    amount: index % 10 === 0 ? -10000 : 20000,
+    date: "2026-08-25",
+    status: "unpaid",
+    savedAt: "2026-08-25T10:00:00Z",
+  }));
+
+  const records = upsertImportedDebtEntries(storage, imported);
+
+  assert.equal(records.length, 1260);
+  assert.equal(JSON.parse(storage.getItem(DEBT_STORAGE_KEY)).length, 1260);
+  assert.equal(records.filter(({ amount }) => amount < 0).length, 126);
+});
+
+test("không ghi đè hoặc làm rơi dữ liệu khi sổ đã đủ 5000 khoản", () => {
+  const existing = Array.from({ length: 5000 }, (_, index) => ({
     id: `entry-${index}`,
     billId: `bill-${index}`,
     creditor: "Diem",
@@ -193,10 +213,53 @@ test("không ghi đè hoặc làm rơi dữ liệu khi sổ đã đủ 1000 kho�
 
   assert.throws(
     () => upsertImportedDebtEntries(storage, imported),
-    /tối đa 1\.000 khoản/i,
+    /tối đa 5\.000 khoản/i,
   );
-  assert.equal(JSON.parse(storage.getItem(DEBT_STORAGE_KEY)).length, 1000);
+  assert.equal(JSON.parse(storage.getItem(DEBT_STORAGE_KEY)).length, 5000);
   assert.equal(JSON.parse(storage.getItem(DEBT_STORAGE_KEY)).some(({ id }) => id === "import:new:1"), false);
+});
+
+test("không làm rơi dữ liệu khi thêm bill mới vào sổ đã đủ 5000 khoản", () => {
+  const existing = Array.from({ length: 5000 }, (_, index) => ({
+    id: `entry-${index}`,
+    billId: `bill-${index}`,
+    creditor: "Diem",
+    debtor: `Người ${index}`,
+    amount: 10000,
+    date: "2026-08-20",
+    status: "unpaid",
+    savedAt: "2026-08-20T10:00:00Z",
+  }));
+  const rawBefore = JSON.stringify(existing);
+  const storage = createMemoryStorage({ [DEBT_STORAGE_KEY]: rawBefore });
+  const newEntry = parseDebtEntries(JSON.stringify([
+    { id: "new-entry", billId: "new-bill", creditor: "Diem", debtor: "Tin", amount: 16000, date: "2026-08-25", status: "unpaid", savedAt: "2026-08-25T10:00:00Z" },
+  ]));
+
+  assert.throws(() => upsertDebtEntries(storage, "new-bill", newEntry), /tối đa 5\.000 khoản/i);
+  assert.equal(storage.getItem(DEBT_STORAGE_KEY), rawBefore);
+});
+
+test("vẫn cập nhật được bill hiện có khi sổ đã đủ 5000 khoản", () => {
+  const existing = Array.from({ length: 5000 }, (_, index) => ({
+    id: `entry-${index}`,
+    billId: `bill-${index}`,
+    creditor: "Diem",
+    debtor: `Người ${index}`,
+    amount: 10000,
+    date: "2026-08-20",
+    status: "unpaid",
+    savedAt: "2026-08-20T10:00:00Z",
+  }));
+  const storage = createMemoryStorage({ [DEBT_STORAGE_KEY]: JSON.stringify(existing) });
+  const updated = parseDebtEntries(JSON.stringify([
+    { id: "entry-updated", billId: "bill-0", creditor: "Diem", debtor: "Người 0", amount: -5000, date: "2026-08-25", status: "paid", savedAt: "2026-08-25T10:00:00Z" },
+  ]));
+
+  const records = upsertDebtEntries(storage, "bill-0", updated);
+
+  assert.equal(records.length, 5000);
+  assert.equal(records.find(({ billId }) => billId === "bill-0").amount, -5000);
 });
 
 test("cập nhật bill vẫn giữ trạng thái đã trả của từng người", () => {
@@ -240,6 +303,49 @@ test("tính riêng tổng tiền đã trả và chưa trả cho phần tổng qu
     unpaidCount: 1,
     peopleCount: 2,
   });
+});
+
+test("giữ số âm và cộng tổng theo đúng dấu", () => {
+  const entries = parseDebtEntries(JSON.stringify([
+    { id: "1", billId: "a", creditor: "Diem", debtor: "Tin", amount: 50000, date: "2026-08-18", status: "unpaid", savedAt: "2026-08-18T10:00:00Z" },
+    { id: "2", billId: "b", creditor: "Diem", debtor: "Tin", amount: -12000, date: "2026-08-19", status: "unpaid", savedAt: "2026-08-19T10:00:00Z" },
+    { id: "3", billId: "c", creditor: "Diem", debtor: "Tin", amount: -5000, date: "2026-08-20", status: "paid", savedAt: "2026-08-20T10:00:00Z" },
+  ]));
+
+  assert.deepEqual(entries.map(({ amount }) => amount).sort((a, b) => a - b), [-12000, -5000, 50000]);
+  assert.deepEqual(getDebtSummary(entries), [
+    { name: "Tin", unpaidAmount: 38000, paidAmount: -5000, totalAmount: 33000, unpaidCount: 2, billCount: 3 },
+  ]);
+  assert.deepEqual(getDebtOverview(entries), {
+    unpaidAmount: 38000,
+    paidAmount: -5000,
+    unpaidCount: 2,
+    peopleCount: 1,
+  });
+});
+
+test("loại số tiền quá lớn và giữ tổng 5000 khoản trong vùng số nguyên an toàn", () => {
+  const rejected = parseDebtEntries(JSON.stringify([
+    { id: "unsafe-positive", billId: "a", creditor: "Diem", debtor: "Tin", amount: Number.MAX_SAFE_INTEGER, date: "2026-08-20", status: "unpaid", savedAt: "2026-08-20T10:00:00Z" },
+    { id: "unsafe-negative", billId: "b", creditor: "Diem", debtor: "Tin", amount: -Number.MAX_SAFE_INTEGER, date: "2026-08-20", status: "unpaid", savedAt: "2026-08-20T10:00:00Z" },
+  ]));
+  assert.equal(rejected.length, 0);
+
+  const safeAmount = Math.floor(Number.MAX_SAFE_INTEGER / 5000);
+  const entries = Array.from({ length: 5000 }, (_, index) => ({
+    id: `safe-${index}`,
+    billId: `safe-${index}`,
+    creditor: "Diem",
+    debtor: "Tin",
+    amount: index === 0 ? -safeAmount : safeAmount,
+    date: "2026-08-20",
+    status: "unpaid",
+    savedAt: "2026-08-20T10:00:00Z",
+  }));
+  const overview = getDebtOverview(entries);
+
+  assert.equal(overview.unpaidAmount, safeAmount * 4998);
+  assert.equal(Number.isSafeInteger(overview.unpaidAmount), true);
 });
 
 test("phân trang danh sách khoản tiền theo 10 dòng mỗi trang", () => {

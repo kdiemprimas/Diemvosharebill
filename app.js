@@ -798,8 +798,10 @@ function saveDebtLedger() {
     upsertHistoryRecord(localStorage, historyRecord);
     state.historyRecordId = recordId;
     persist();
-  } catch {
-    elements.saveDebtError.textContent = "Trình duyệt chưa thể lưu dữ liệu. Hãy kiểm tra quyền lưu trữ rồi thử lại.";
+  } catch (error) {
+    elements.saveDebtError.textContent = error?.code === "DEBT_LEDGER_CAPACITY_EXCEEDED"
+      ? error.message
+      : "Trình duyệt chưa thể lưu dữ liệu. Hãy kiểm tra quyền lưu trữ rồi thử lại.";
     return;
   }
 

@@ -1,16 +1,21 @@
 export const DEBT_STORAGE_KEY = "chia-bill-debt-ledger-v1";
 
-const MAX_DEBT_ENTRIES = 1000;
+const MAX_DEBT_ENTRIES = 5000;
+const MAX_ABSOLUTE_DEBT_AMOUNT = Math.floor(Number.MAX_SAFE_INTEGER / MAX_DEBT_ENTRIES);
 const MAX_BILL_PEOPLE = 100;
 
 const cleanText = (value, maxLength = 120) =>
   String(value ?? "").trim().replace(/\s+/g, " ").slice(0, maxLength);
 
 const cleanMoney = (value) => {
+  const text = String(value ?? "").trim();
   const number = typeof value === "number"
     ? value
-    : Number(String(value ?? "").replace(/\D/g, ""));
-  return Number.isFinite(number) ? Math.max(0, Math.round(number)) : 0;
+    : (/^[\-−]/.test(text) ? -1 : 1) * Number(text.replace(/\D/g, ""));
+  const rounded = Math.round(number);
+  return Number.isSafeInteger(rounded) && Math.abs(rounded) <= MAX_ABSOLUTE_DEBT_AMOUNT
+    ? rounded
+    : 0;
 };
 
 export function formatDebtAmountInput(value) {
@@ -157,13 +162,28 @@ export function readDebtEntries(storage = localStorage) {
 export function upsertDebtEntries(storage = localStorage, billId, newEntries = []) {
   const cleanBillId = cleanText(billId, 100);
   if (!cleanBillId) return readDebtEntries(storage);
-  const normalizedEntries = newEntries.map(normalizeDebtEntry).filter(Boolean);
+  const seenIds = new Set();
+  const normalizedEntries = newEntries
+    .map(normalizeDebtEntry)
+    .filter((entry) => {
+      if (!entry || seenIds.has(entry.id)) return false;
+      seenIds.add(entry.id);
+      return true;
+    });
   const records = [
     ...normalizedEntries,
     ...readDebtEntries(storage).filter((entry) => entry.billId !== cleanBillId),
-  ].sort(sortDebtEntries).slice(0, MAX_DEBT_ENTRIES);
+  ];
+  if (records.length > MAX_DEBT_ENTRIES) throw createDebtCapacityError();
+  records.sort(sortDebtEntries);
   storage.setItem(DEBT_STORAGE_KEY, JSON.stringify(records));
   return records;
+}
+
+function createDebtCapacityError() {
+  const error = new RangeError(`Sổ tiền chia lưu tối đa 5.000 khoản. Hãy xóa bớt dữ liệu trước khi thêm khoản mới.`);
+  error.code = "DEBT_LEDGER_CAPACITY_EXCEEDED";
+  return error;
 }
 
 export function upsertImportedDebtEntries(storage = localStorage, newEntries = []) {
@@ -181,11 +201,7 @@ export function upsertImportedDebtEntries(storage = localStorage, newEntries = [
     ...normalizedEntries,
     ...readDebtEntries(storage).filter(({ id }) => !importedIds.has(id)),
   ];
-  if (combined.length > MAX_DEBT_ENTRIES) {
-    const error = new RangeError(`Sổ tiền chia lưu tối đa 1.000 khoản. Hãy xóa bớt dữ liệu trước khi nhập file này.`);
-    error.code = "DEBT_LEDGER_CAPACITY_EXCEEDED";
-    throw error;
-  }
+  if (combined.length > MAX_DEBT_ENTRIES) throw createDebtCapacityError();
   const records = combined.sort(sortDebtEntries);
   storage.setItem(DEBT_STORAGE_KEY, JSON.stringify(records));
   return records;

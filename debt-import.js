@@ -12,6 +12,7 @@ const COLUMN_LABELS = {
   date: "Ngày",
 };
 const MAX_IMPORT_ROWS = 5000;
+const MAX_ABSOLUTE_DEBT_AMOUNT = Math.floor(Number.MAX_SAFE_INTEGER / MAX_IMPORT_ROWS);
 const MAX_COMPRESSED_WORKBOOK_BYTES = 10 * 1024 * 1024;
 const MAX_UNCOMPRESSED_WORKBOOK_BYTES = 8 * 1024 * 1024;
 const MAX_WORKSHEET_SOURCE_BYTES = 128 * 1024 * 1024;
@@ -52,9 +53,10 @@ function getColumnName(value) {
 function parseAmount(value) {
   if (typeof value === "number") return Number.isFinite(value) ? Math.round(value) : 0;
   const text = cleanText(value, 40);
-  if (!text || /^-/.test(text)) return 0;
+  if (!text) return 0;
+  const sign = /^[\-−]/.test(text) ? -1 : 1;
   const digits = text.replace(/\D/g, "");
-  return digits ? Number(digits) : 0;
+  return digits ? sign * Number(digits) : 0;
 }
 
 function isValidDateParts(year, month, day) {
@@ -191,8 +193,10 @@ export function createDebtImportPreview(rows = [], options = {}) {
     if (creditor && debtor && normalizeKey(creditor) === normalizeKey(debtor)) {
       errors.push("Chủ nợ và con nợ cần là hai người khác nhau.");
     }
-    if (!Number.isSafeInteger(amount) || amount <= 0) {
-      errors.push("Số tiền cần là số nguyên an toàn và lớn hơn 0 ₫.");
+    if (!Number.isSafeInteger(amount) || amount === 0) {
+      errors.push("Số tiền cần là số nguyên an toàn và khác 0 ₫.");
+    } else if (Math.abs(amount) > MAX_ABSOLUTE_DEBT_AMOUNT) {
+      errors.push(`Số tiền không được vượt quá ${MAX_ABSOLUTE_DEBT_AMOUNT.toLocaleString("vi-VN")} ₫.`);
     }
     if (!date) errors.push("Ngày chưa đúng định dạng Excel hoặc mm/dd/yyyy.");
     if (!status) errors.push("Trạng thái chỉ nhận Đã trả, Chưa trả hoặc để trống.");
