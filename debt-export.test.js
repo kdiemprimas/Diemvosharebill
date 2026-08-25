@@ -7,6 +7,7 @@ import {
   createDebtWorkbook,
   createDebtWorkbookFilename,
   getDebtExportEntries,
+  getDebtReportRows,
   getDebtReportGridLayout,
   getDebtReportPaymentDetails,
   getDebtReportPeriodLabel,
@@ -17,6 +18,26 @@ test("rút gọn ảnh báo cáo bằng hai cột khi có nhiều khoản nợ",
   assert.deepEqual(getDebtReportGridLayout(4), { columns: 1, rows: 4 });
   assert.deepEqual(getDebtReportGridLayout(5), { columns: 2, rows: 3 });
   assert.deepEqual(getDebtReportGridLayout(16), { columns: 2, rows: 8 });
+});
+
+test("hiển thị đủ 30 khoản trước khi gộp các khoản còn lại", () => {
+  const entries = Array.from({ length: 31 }, (_, index) => ({
+    creditor: `Người ${index + 1}`,
+    amount: (index + 1) * 1000,
+    note: `Khoản ${index + 1}`,
+  }));
+
+  assert.equal(getDebtReportRows(entries.slice(0, 30)).length, 30);
+  const rows = getDebtReportRows(entries);
+  assert.equal(rows.length, 31);
+  assert.deepEqual(rows.slice(0, 30), entries.slice(0, 30));
+  assert.deepEqual(rows[30], {
+    creditor: "Xem trong sổ tiền chia",
+    amount: 31000,
+    date: "",
+    note: "Còn 1 khoản khác",
+    isRemainder: true,
+  });
 });
 
 test("cung cấp đúng thông tin nhận tiền cho ảnh báo cáo", () => {

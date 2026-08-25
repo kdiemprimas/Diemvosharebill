@@ -218,6 +218,23 @@ export function getDebtReportGridLayout(itemCount = 0) {
   return { columns, rows: Math.ceil(count / columns) };
 }
 
+export function getDebtReportRows(unpaidEntries = []) {
+  const entries = Array.isArray(unpaidEntries) ? unpaidEntries : [];
+  const visibleLimit = 30;
+  if (entries.length <= visibleLimit) return entries;
+  const remaining = entries.slice(visibleLimit);
+  return [
+    ...entries.slice(0, visibleLimit),
+    {
+      creditor: "Xem trong sổ tiền chia",
+      amount: remaining.reduce((total, { amount }) => total + amount, 0),
+      date: "",
+      note: `Còn ${remaining.length} khoản khác`,
+      isRemainder: true,
+    },
+  ];
+}
+
 export function getDebtReportPaymentDetails() {
   return {
     bankName: "BIDV",

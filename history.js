@@ -35,6 +35,7 @@ import {
   getDebtReportGridLayout,
   getDebtReportPaymentDetails,
   getDebtReportPeriodLabel,
+  getDebtReportRows,
 } from "./debt-export.js";
 import {
   createDebtImportPreview,
@@ -679,22 +680,6 @@ function fitCanvasText(context, value, maxWidth) {
   return `${fitted}…`;
 }
 
-function getReportDebtRows(unpaidEntries, maxRows = 16) {
-  if (unpaidEntries.length <= maxRows) return unpaidEntries;
-  const visible = unpaidEntries.slice(0, maxRows - 1);
-  const remaining = unpaidEntries.slice(maxRows - 1);
-  return [
-    ...visible,
-    {
-      creditor: "Xem trong sổ tiền chia",
-      amount: remaining.reduce((total, { amount }) => total + amount, 0),
-      date: "",
-      note: `Còn ${remaining.length} khoản khác`,
-      isRemainder: true,
-    },
-  ];
-}
-
 function loadDebtReportPaymentQr() {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -706,7 +691,7 @@ function loadDebtReportPaymentQr() {
 }
 
 async function drawPersonDebtReport(report) {
-  const debtRows = getReportDebtRows(report.unpaidEntries);
+  const debtRows = getDebtReportRows(report.unpaidEntries);
   const debtGrid = getDebtReportGridLayout(debtRows.length);
   const listStartY = 720;
   const listHeight = debtRows.length ? debtGrid.rows * 112 : 180;
