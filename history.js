@@ -38,8 +38,11 @@ import {
   getDebtReportRows,
 } from "./debt-export.js";
 import {
+  createDebtImportDuplicateReview,
   createDebtImportPreview,
+  hasDebtImportDuplicateReviewChanged,
   parseDebtWorkbook,
+  selectDebtImportEntries,
 } from "./debt-import.js";
 import {
   createDebtStatusConfirmation,
@@ -77,6 +80,10 @@ const elements = {
   debtImportDialog: document.querySelector("#debt-import-dialog"),
   debtImportSummary: document.querySelector("#debt-import-summary"),
   debtImportFatalError: document.querySelector("#debt-import-fatal-error"),
+  debtImportDuplicateChoice: document.querySelector("#debt-import-duplicate-choice"),
+  debtImportDuplicateCount: document.querySelector("#debt-import-duplicate-count"),
+  debtImportWillImport: document.querySelector("#debt-import-will-import"),
+  debtImportPolicyInputs: [...document.querySelectorAll('[name="debt-import-duplicate-policy"]')],
   debtImportReview: document.querySelector("#debt-import-review"),
   debtImportReviewBody: document.querySelector("#debt-import-review-body"),
   confirmDebtImport: document.querySelector("#confirm-debt-import"),
@@ -547,8 +554,9 @@ function formatImportStatus(status) {
 
 function renderDebtImportRow(row) {
   const hasErrors = row.errors.length > 0;
+  const rowClass = hasErrors ? "has-error" : row.isDuplicate ? "is-duplicate" : "is-valid";
   return `
-    <tr class="${hasErrors ? "has-error" : "is-valid"}">
+    <tr class="${rowClass}">
       <td>${row.rowNumber}</td>
       <td>${escapeHtml(row.creditor || "—")}</td>
       <td>${escapeHtml(row.debtor || "—")}</td>
@@ -558,33 +566,75 @@ function renderDebtImportRow(row) {
       <td><span class="debt-import-status-pill ${row.status === "paid" ? "is-paid" : "is-unpaid"}">${formatImportStatus(row.status)}</span></td>
       <td class="debt-import-check-cell">${hasErrors
         ? `<strong>${escapeHtml(row.errors.join(" "))}</strong>`
-        : "<span>Hợp lệ</span>"}</td>
+        : row.isDuplicate
+          ? '<span class="is-duplicate">Đã có trong sổ</span>'
+          : "<span>Hợp lệ</span>"}</td>
     </tr>
   `;
 }
 
-function showDebtImportDialog(preview, fileName) {
-  pendingDebtImport = { preview, fileName };
-  const hasFatalErrors = preview.fatalErrors.length > 0;
+function getDebtImportDuplicatePolicy() {
+  return elements.debtImportPolicyInputs.find(({ checked }) => checked)?.value === "add"
+    ? "add"
+    : "skip";
+}
+
+function updateDebtImportSelection() {
+  const review = pendingDebtImport?.review;
+  if (!review) return;
+  const policy = getDebtImportDuplicatePolicy();
+  const importCount = policy === "add" ? review.validCount : review.newCount;
+  elements.debtImportWillImport.textContent = `${importCount} dòng sẽ được nhập.`;
+  elements.confirmDebtImport.textContent = importCount
+    ? `Nhập chính thức (${importCount})`
+    : "Không có dòng mới";
+  elements.confirmDebtImport.disabled = review.fatalErrors.length > 0
+    || review.errorCount > 0
+    || importCount === 0;
+}
+
+function renderDebtImportDialog(review, fileName, options = {}) {
+  const hasFatalErrors = review.fatalErrors.length > 0;
+  if (options.resetPolicy !== false) {
+    elements.debtImportPolicyInputs.forEach((input) => {
+      input.checked = input.value === "skip";
+    });
+  }
   elements.debtImportSummary.innerHTML = `
     <strong>${escapeHtml(fileName)}</strong>
-    <span>${preview.totalCount} dòng dữ liệu</span>
-    <span class="is-valid">${preview.validCount} hợp lệ</span>
-    <span class="${preview.errorCount ? "has-error" : "is-valid"}">${preview.errorCount} lỗi</span>
+    <span>${review.totalCount} dòng dữ liệu</span>
+    <span class="is-valid">${review.validCount} hợp lệ</span>
+    <span class="${review.errorCount ? "has-error" : "is-valid"}">${review.errorCount} lỗi</span>
+    ${review.duplicateCount ? `<span class="has-duplicate">${review.duplicateCount} trùng</span>` : ""}
+    ${options.announceChange ? '<span class="has-duplicate">Sổ vừa thay đổi · hãy kiểm tra lại</span>' : ""}
   `;
   elements.debtImportFatalError.hidden = !hasFatalErrors;
-  elements.debtImportFatalError.textContent = preview.fatalErrors.join(" ");
-  elements.debtImportReview.hidden = hasFatalErrors || preview.rows.length === 0;
-  elements.debtImportReviewBody.innerHTML = preview.rows.map(renderDebtImportRow).join("");
-  elements.confirmDebtImport.disabled = hasFatalErrors
-    || preview.validCount === 0
-    || preview.errorCount > 0;
+  elements.debtImportFatalError.textContent = review.fatalErrors.join(" ");
+  elements.debtImportDuplicateChoice.hidden = hasFatalErrors || review.duplicateCount === 0;
+  elements.debtImportDuplicateCount.textContent = `${review.duplicateCount} dòng`;
+  elements.debtImportReview.hidden = hasFatalErrors || review.rows.length === 0;
+  elements.debtImportReviewBody.innerHTML = review.rows.map(renderDebtImportRow).join("");
+  updateDebtImportSelection();
+}
+
+function showDebtImportDialog(preview, fileName) {
+  const review = createDebtImportDuplicateReview(preview, debtEntries);
+  pendingDebtImport = { preview, review, fileName };
+  renderDebtImportDialog(review, fileName);
 
   if (typeof elements.debtImportDialog.showModal === "function") {
     elements.debtImportDialog.showModal();
   } else {
     elements.debtImportDialog.setAttribute("open", "");
   }
+  window.setTimeout(() => elements.debtImportSummary.focus(), 0);
+}
+
+function refreshPendingDebtImportReview(announceChange = true) {
+  if (!pendingDebtImport) return;
+  const review = createDebtImportDuplicateReview(pendingDebtImport.preview, debtEntries);
+  pendingDebtImport.review = review;
+  renderDebtImportDialog(review, pendingDebtImport.fileName, { announceChange });
   window.setTimeout(() => elements.debtImportSummary.focus(), 0);
 }
 
@@ -632,8 +682,21 @@ async function reviewDebtImportFile(event) {
 function confirmDebtImport() {
   const preview = pendingDebtImport?.preview;
   if (!preview || preview.fatalErrors.length || preview.errorCount || !preview.entries.length) return;
+  const previousReview = pendingDebtImport.review;
+  debtEntries = readDebtEntries(localStorage);
+  const review = createDebtImportDuplicateReview(preview, debtEntries);
+  if (hasDebtImportDuplicateReviewChanged(previousReview, review)) {
+    pendingDebtImport.review = review;
+    renderDebtImportDialog(review, pendingDebtImport.fileName, { announceChange: true });
+    elements.debtImportStatus.textContent = "Sổ vừa thay đổi. Hãy kiểm tra lại dữ liệu trùng trước khi nhập.";
+    window.setTimeout(() => elements.debtImportSummary.focus(), 0);
+    return;
+  }
+  const policy = getDebtImportDuplicatePolicy();
+  const entriesToImport = selectDebtImportEntries(review, policy);
+  if (!entriesToImport.length) return;
   try {
-    debtEntries = upsertImportedDebtEntries(localStorage, preview.entries);
+    debtEntries = upsertImportedDebtEntries(localStorage, entriesToImport);
   } catch (error) {
     elements.debtImportFatalError.hidden = false;
     elements.debtImportFatalError.textContent = error?.code === "DEBT_LEDGER_CAPACITY_EXCEEDED"
@@ -643,7 +706,7 @@ function confirmDebtImport() {
     return;
   }
 
-  const importedCount = preview.entries.length;
+  const importedCount = entriesToImport.length;
   debtPersonFilter = "";
   debtYearFilter = "";
   debtPage = 1;
@@ -654,7 +717,11 @@ function confirmDebtImport() {
     elements.debtImportDialog.removeAttribute("open");
   }
   renderDebtLedger();
-  elements.debtImportStatus.textContent = `Đã nhập hoặc cập nhật ${importedCount} khoản từ Excel.`;
+  elements.debtImportStatus.textContent = policy === "skip" && review.duplicateCount
+    ? `Đã thêm ${importedCount} khoản, bỏ qua ${review.duplicateCount} dòng trùng.`
+    : policy === "add" && review.duplicateCount
+      ? `Đã thêm ${importedCount} khoản, gồm ${review.duplicateCount} bản ghi trùng.`
+      : `Đã thêm ${importedCount} khoản từ Excel.`;
 }
 
 function drawRoundedRect(context, x, y, width, height, radius, fill) {
@@ -1084,6 +1151,7 @@ elements.debtReportButton.addEventListener("click", exportPersonDebtReportImage)
 elements.debtImportButton.addEventListener("click", () => elements.debtImportInput.click());
 elements.debtImportInput.addEventListener("change", reviewDebtImportFile);
 elements.confirmDebtImport.addEventListener("click", confirmDebtImport);
+elements.debtImportPolicyInputs.forEach((input) => input.addEventListener("change", updateDebtImportSelection));
 elements.debtImportDialog.addEventListener("close", () => {
   pendingDebtImport = null;
   window.setTimeout(() => elements.debtImportButton.focus(), 0);
@@ -1226,7 +1294,10 @@ elements.confirmDelete.addEventListener("click", () => {
 
 window.addEventListener("storage", (event) => {
   if (event.key === HISTORY_STORAGE_KEY) records = readHistory();
-  else if (event.key === DEBT_STORAGE_KEY) debtEntries = readDebtEntries();
+  else if (event.key === DEBT_STORAGE_KEY) {
+    debtEntries = readDebtEntries();
+    if (elements.debtImportDialog.open && pendingDebtImport) refreshPendingDebtImportReview();
+  }
   else return;
   renderHistory();
 });

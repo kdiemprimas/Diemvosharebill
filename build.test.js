@@ -132,6 +132,10 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyHtml, /id="manual-debt-date"[^>]+required/);
   assert.match(historyHtml, /id="manual-debt-status"/);
   assert.match(historyHtml, /id="manual-debt-error"[^>]+role="alert"/);
+  assert.match(historyHtml, /<fieldset[^>]+id="debt-import-duplicate-choice"[^>]+hidden/);
+  assert.match(historyHtml, /name="debt-import-duplicate-policy"[^>]+value="skip"[^>]+checked/);
+  assert.match(historyHtml, /name="debt-import-duplicate-policy"[^>]+value="add"/);
+  assert.match(historyHtml, /id="debt-import-will-import"/);
   assert.match(historyHtml, /class="melo-performer"/);
   assert.match(historyHtml, /class="melo-sprite melo-sprite-running"/);
   assert.match(historyHtml, /class="melo-sprite melo-sprite-singing"/);
@@ -160,6 +164,8 @@ test("đóng gói đầy đủ webapp và tài nguyên OCR cho GitHub Pages", as
   assert.match(historyApp, /parseDebtAmountInput/);
   assert.match(historyApp, /upsertDebtEntries/);
   assert.match(historyApp, /upsertImportedDebtEntries/);
+  assert.match(historyApp, /createDebtImportDuplicateReview/);
+  assert.match(historyApp, /selectDebtImportEntries/);
   assert.match(historyApp, /updateDebtStatuses/);
   assert.match(historyApp, /removeDebtEntries/);
   const css = await readFile(join(outputDir, "styles.css"), "utf8");

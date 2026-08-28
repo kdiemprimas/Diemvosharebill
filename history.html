@@ -284,6 +284,28 @@
         </div>
         <div class="debt-import-summary" id="debt-import-summary" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
         <p class="debt-import-fatal-error" id="debt-import-fatal-error" role="alert" hidden></p>
+        <fieldset
+          class="debt-import-duplicate-choice"
+          id="debt-import-duplicate-choice"
+          aria-describedby="debt-import-duplicate-description debt-import-will-import"
+          hidden
+        >
+          <legend>Phát hiện dữ liệu trùng</legend>
+          <p id="debt-import-duplicate-description">
+            <strong id="debt-import-duplicate-count">0 dòng</strong> đã có trong sổ. Bạn muốn xử lý thế nào?
+          </p>
+          <div class="debt-import-duplicate-options">
+            <label>
+              <input name="debt-import-duplicate-policy" type="radio" value="skip" checked />
+              <span><strong>Bỏ qua dòng trùng</strong><small>Chỉ nhập những dòng chưa có.</small></span>
+            </label>
+            <label>
+              <input name="debt-import-duplicate-policy" type="radio" value="add" />
+              <span><strong>Vẫn nhập thêm</strong><small>Tạo thêm bản ghi mới, không ghi đè bản cũ.</small></span>
+            </label>
+          </div>
+          <p class="debt-import-will-import" id="debt-import-will-import" role="status" aria-live="polite">0 dòng sẽ được nhập.</p>
+        </fieldset>
         <div
           class="debt-import-review"
           id="debt-import-review"

@@ -245,6 +245,89 @@ export function createDebtImportPreview(rows = [], options = {}) {
   };
 }
 
+function getDebtEntryIdentity(entry) {
+  return JSON.stringify([
+    normalizeKey(entry?.creditor),
+    normalizeKey(entry?.debtor),
+    Number(entry?.amount),
+    cleanText(entry?.date, 10),
+    cleanText(entry?.note, 160).toLocaleLowerCase("vi-VN"),
+    entry?.status === "paid" ? "paid" : "unpaid",
+  ]);
+}
+
+export function createDebtImportDuplicateReview(preview = {}, existingEntries = []) {
+  const availableExistingCounts = new Map();
+  const currentEntries = Array.isArray(existingEntries) ? existingEntries : [];
+  currentEntries.forEach((entry) => {
+    const identity = getDebtEntryIdentity(entry);
+    availableExistingCounts.set(identity, (availableExistingCounts.get(identity) || 0) + 1);
+  });
+
+  let duplicateCount = 0;
+  const rows = (Array.isArray(preview.rows) ? preview.rows : []).map((row) => {
+    if (!row.entry || row.errors?.length) return { ...row, isDuplicate: false };
+    const identity = getDebtEntryIdentity(row.entry);
+    const remainingMatches = availableExistingCounts.get(identity) || 0;
+    const isDuplicate = remainingMatches > 0;
+    if (isDuplicate) {
+      duplicateCount += 1;
+      availableExistingCounts.set(identity, remainingMatches - 1);
+    }
+    return { ...row, isDuplicate };
+  });
+
+  return {
+    ...preview,
+    rows,
+    duplicateCount,
+    newCount: Math.max(0, Number(preview.validCount) - duplicateCount),
+    existingIds: currentEntries.map(({ id }) => cleanText(id, 160)).filter(Boolean),
+  };
+}
+
+export function hasDebtImportDuplicateReviewChanged(previousReview = {}, nextReview = {}) {
+  const previousFlags = (Array.isArray(previousReview.rows) ? previousReview.rows : [])
+    .map(({ isDuplicate }) => isDuplicate === true);
+  const nextFlags = (Array.isArray(nextReview.rows) ? nextReview.rows : [])
+    .map(({ isDuplicate }) => isDuplicate === true);
+  return previousFlags.length !== nextFlags.length
+    || previousFlags.some((flag, index) => flag !== nextFlags[index]);
+}
+
+function createImportCopyToken() {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+export function selectDebtImportEntries(review = {}, duplicatePolicy = "skip", createId = createImportCopyToken) {
+  const usedIds = new Set(Array.isArray(review.existingIds) ? review.existingIds : []);
+  let copyNumber = 0;
+  function createAvailableId() {
+    let id;
+    do {
+      copyNumber += 1;
+      const token = cleanText(createId(), 100).replace(/[^a-zA-Z0-9_-]/g, "") || "copy";
+      id = `import-copy:${token}:${copyNumber}`;
+    } while (usedIds.has(id));
+    usedIds.add(id);
+    return id;
+  }
+
+  return (Array.isArray(review.rows) ? review.rows : [])
+    .filter((row) => row.entry && (!row.isDuplicate || duplicatePolicy === "add"))
+    .map((row) => {
+      if (!row.isDuplicate && !usedIds.has(row.entry.id)) {
+        usedIds.add(row.entry.id);
+        return row.entry;
+      }
+      const id = createAvailableId();
+      return { ...row.entry, id, billId: id };
+    });
+}
+
 function stableRowHash(value) {
   let hash = 14695981039346656037n;
   for (const character of String(value)) {
