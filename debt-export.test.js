@@ -50,40 +50,40 @@ test("QR ghi tên con nợ, chủ nợ và ngày xuất ảnh thay vì ngày kho
     { debtor: "Đặng An", creditor: "Sơn", amount: 10000, date: "2025-01-01", status: "paid" },
   ], "Đặng An", "2025", new Date(2026, 8, 7));
   const url = new URL(getDebtReportPaymentQrUrl(report));
-  assert.equal(url.searchParams.get("addInfo"), "Dang An tra no cho Diem ngay 07 09 2026");
+  assert.equal(url.searchParams.get("addInfo"), "Dang An tra no cho Diem ngay 07 09");
   assert.equal(url.searchParams.get("amount"), "54000");
   report.generatedDate = "08/09/2026";
-  assert.equal(new URL(getDebtReportPaymentQrUrl(report)).searchParams.get("addInfo"), "Dang An tra no cho Diem ngay 08 09 2026");
+  assert.equal(new URL(getDebtReportPaymentQrUrl(report)).searchParams.get("addInfo"), "Dang An tra no cho Diem ngay 08 09");
 });
 
 test("QR ghi các chủ nợ còn phải trả, không gán toàn bộ nợ cho chủ đầu tiên", () => {
   const report = { personName: "An", totalUnpaid: 10000, generatedDate: "07/09/2026",
     creditors: [{ name: "Diễm", amount: 7000 }, { name: "Sơn", amount: 3000 }, { name: "Bình", amount: 0 }] };
-  assert.equal(new URL(getDebtReportPaymentQrUrl(report)).searchParams.get("addInfo"), "An tra no cho Diem va Son ngay 07 09 2026");
+  assert.equal(new URL(getDebtReportPaymentQrUrl(report)).searchParams.get("addInfo"), "An tra no cho Diem va Son ngay 07 09");
 });
 
 test("nội dung dài được viết gọn nhưng giữ câu trả nợ và ngày xuất", () => {
   const report = { personName: "Nguyễn Thị Hoàng Minh Anh", totalUnpaid: 10000, generatedDate: "07/09/2026",
     creditors: [{ name: "Võ Thị Kiều Diễm", amount: 10000 }] };
   const info = new URL(getDebtReportPaymentQrUrl(report)).searchParams.get("addInfo");
-  assert.equal(info, "N T H M Anh tra no cho V T K Diem ngay 07 09 2026");
+  assert.equal(info, "N T H M Anh tra no cho V T K Diem ngay 07 09");
   assert.ok(info.length <= 50);
   report.creditors = Array.from({ length: 10 }, (_, i) => ({ name: `Chủ nợ ${i}`, amount: 1000 }));
   const many = new URL(getDebtReportPaymentQrUrl(report)).searchParams.get("addInfo");
   assert.ok(many.length <= 50);
-  assert.match(many, /tra no cho cac chu no ngay 07 09 2026$/);
+  assert.match(many, /tra no cho cac chu no ngay 07 09$/);
 });
 
 test("nội dung QR loại ký tự đặc biệt và không để tên dài làm mất ngày", () => {
   const report = { personName: "Đặng & An 💸", totalUnpaid: 10000, generatedDate: "07/09/2026",
     creditors: [{ name: "Diễm / Võ", amount: 10000 }] };
   const info = new URL(getDebtReportPaymentQrUrl(report)).searchParams.get("addInfo");
-  assert.equal(info, "Dang An tra no cho Diem Vo ngay 07 09 2026");
+  assert.equal(info, "Dang An tra no cho Diem Vo ngay 07 09");
   report.personName = "A".repeat(80);
   report.creditors[0].name = "B".repeat(80);
   const long = new URL(getDebtReportPaymentQrUrl(report)).searchParams.get("addInfo");
   assert.equal(long.length, 50);
-  assert.match(long, / ngay 07 09 2026$/);
+  assert.match(long, / ngay 07 09$/);
 });
 
 test("từ chối số tiền QR không hợp lệ hoặc vượt giới hạn VietQR", () => {

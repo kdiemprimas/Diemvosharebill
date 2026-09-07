@@ -266,7 +266,8 @@ function getDebtReportTransferContent(report) {
     .map((creditor) => transferText(creditor.name) || "chu no");
   let creditor = names.join(" va ") || "chu no";
   const middle = " tra no cho ";
-  const suffix = ` ngay ${transferText(report.generatedDate || formatDisplayDate(new Date()))}`;
+  const exportDate = report.generatedDate || formatDisplayDate(new Date());
+  const suffix = ` ngay ${transferText(exportDate.split("/").slice(0, 2).join(" "))}`;
   const nameBudget = 50 - middle.length - suffix.length;
   if (debtor.length + creditor.length > nameBudget) {
     debtor = abbreviateTransferName(debtor);
