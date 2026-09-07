@@ -244,6 +244,60 @@ export function getDebtReportPaymentDetails() {
   };
 }
 
+function transferText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .trim();
+}
+
+function abbreviateTransferName(name) {
+  const words = name.split(" ");
+  return words.map((word, index) => index === words.length - 1 ? word : word[0]).join(" ");
+}
+
+function getDebtReportTransferContent(report) {
+  let debtor = transferText(report.personName) || "Nguoi no";
+  const names = (report.creditors || [])
+    .filter((creditor) => creditor.amount > 0)
+    .map((creditor) => transferText(creditor.name) || "chu no");
+  let creditor = names.join(" va ") || "chu no";
+  const middle = " tra no cho ";
+  const suffix = ` ngay ${transferText(report.generatedDate || formatDisplayDate(new Date()))}`;
+  const nameBudget = 50 - middle.length - suffix.length;
+  if (debtor.length + creditor.length > nameBudget) {
+    debtor = abbreviateTransferName(debtor);
+    creditor = names.map(abbreviateTransferName).join(" va ") || "chu no";
+  }
+  if (debtor.length + creditor.length > nameBudget && names.length > 1) {
+    creditor = "cac chu no";
+  }
+  // Preserve the payment wording and export date even for very long single names.
+  while (debtor.length + creditor.length > nameBudget) {
+    if (debtor.length >= creditor.length) debtor = debtor.slice(0, -1).trimEnd();
+    else creditor = creditor.slice(0, -1).trimEnd();
+  }
+  return `${debtor}${middle}${creditor}${suffix}`;
+}
+
+export function getDebtReportPaymentQrUrl(report) {
+  const amount = report?.totalUnpaid;
+  if (!Number.isSafeInteger(amount) || amount > 9999999999999) {
+    throw new Error("Số tiền không hợp lệ để tạo mã VietQR (tối đa 13 chữ số).");
+  }
+  if (amount <= 0) return null;
+  const payment = getDebtReportPaymentDetails();
+  // qr_only preserves the full QR and its quiet zone when placed on the report.
+  // https://vietqr.io/danh-sach-api/link-tao-ma-nhanh/
+  const url = new URL(`https://img.vietqr.io/image/${payment.bankName}-${payment.accountNumber}-qr_only.png`);
+  url.searchParams.set("amount", String(amount));
+  url.searchParams.set("addInfo", getDebtReportTransferContent(report));
+  return url.href;
+}
+
 export function createPersonDebtReport(
   entries = [],
   personFilter = "",

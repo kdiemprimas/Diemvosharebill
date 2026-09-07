@@ -22,6 +22,15 @@ Webapp nhỏ để chia tiền bill GrabFood, beFood, ShopeeFood hoặc nền t�
 - Tổng khuyến mãi được chia đều cho tổng số người.
 - Phần lẻ 1 đồng được phân bổ lần lượt để tổng tiền mọi người luôn khớp tổng bill.
 
+## Xuất ảnh nợ có QR chuyển khoản
+
+- Trong lịch sử, chọn người và năm rồi bấm “Xuất ảnh người này”.
+- QR BIDV điền sẵn đúng tổng còn nợ trên ảnh, không cộng các khoản đã trả.
+- Tổng bằng không hoặc âm sẽ không tạo QR yêu cầu chuyển tiền.
+- QR điền sẵn nội dung “Tên con nợ tra no cho Tên chủ nợ ngay DD MM YYYY”, lấy ngày xuất ảnh. Nội dung dùng chữ không dấu, tối đa 50 ký tự; tên dài được viết gọn. Nếu có nhiều chủ nợ, ghi các tên khi đủ chỗ hoặc “cac chu no”.
+- Khi xuất ảnh, ứng dụng gửi ngân hàng, số tài khoản nhận, tổng tiền và nội dung chuyển khoản (gồm tên và ngày xuất) tới [VietQR](https://vietqr.io/danh-sach-api/link-tao-ma-nhanh/) để tải QR; cần kết nối mạng. Chi tiết từng khoản không được gửi.
+- Nếu không tải được QR trong 15 giây, ứng dụng báo lỗi để thử lại.
+
 ## Chạy local
 
 Có thể mở `index.html` bằng một static server bất kỳ. Nếu đã có Node.js:

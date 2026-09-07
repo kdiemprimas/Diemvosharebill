@@ -34,6 +34,7 @@ import {
   getDebtExportEntries,
   getDebtReportGridLayout,
   getDebtReportPaymentDetails,
+  getDebtReportPaymentQrUrl,
   getDebtReportPeriodLabel,
   getDebtReportRows,
 } from "./debt-export.js";
@@ -135,7 +136,6 @@ const elements = {
 
 const DEBT_PAGE_SIZE = 10;
 const HISTORY_PAGE_SIZE = 5;
-const DEBT_REPORT_PAYMENT_QR = "./assets/payment-qr-bidv.png";
 let records = readHistory();
 let debtEntries = readDebtEntries();
 let debtPersonFilter = "";
@@ -747,13 +747,28 @@ function fitCanvasText(context, value, maxWidth) {
   return `${fitted}…`;
 }
 
-function loadDebtReportPaymentQr() {
+function loadDebtReportPaymentQr(report) {
+  const url = getDebtReportPaymentQrUrl(report);
+  if (!url) return Promise.resolve(null);
   return new Promise((resolve, reject) => {
     const image = new Image();
+    const fail = () => {
+      clearTimeout(timeout);
+      image.onload = null;
+      image.onerror = null;
+      image.src = "";
+      reject(new Error("Không tải được mã QR chuyển khoản. Kiểm tra kết nối mạng rồi xuất lại ảnh."));
+    };
+    const timeout = setTimeout(fail, 15000);
+    image.crossOrigin = "anonymous";
+    image.referrerPolicy = "no-referrer";
     image.decoding = "async";
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Payment QR is unavailable"));
-    image.src = DEBT_REPORT_PAYMENT_QR;
+    image.onload = () => {
+      clearTimeout(timeout);
+      resolve(image);
+    };
+    image.onerror = fail;
+    image.src = url;
   });
 }
 
@@ -765,7 +780,7 @@ async function drawPersonDebtReport(report) {
   const paymentStartY = listStartY + listHeight + 86;
   const footerY = paymentStartY + 526;
   const payment = getDebtReportPaymentDetails();
-  const paymentQr = await loadDebtReportPaymentQr().catch(() => null);
+  const paymentQr = await loadDebtReportPaymentQr(report);
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
   canvas.height = Math.max(1120, footerY + 96);
@@ -856,26 +871,25 @@ async function drawPersonDebtReport(report) {
   drawRoundedRect(context, 100, paymentStartY + 40, 880, 400, 28, "#edf6f1");
 
   if (paymentQr) {
-    const sourceSize = Math.min(paymentQr.naturalWidth * 0.66, paymentQr.naturalHeight * 0.56);
-    const sourceX = (paymentQr.naturalWidth - sourceSize) / 2;
-    const sourceY = paymentQr.naturalHeight * 0.17;
     drawRoundedRect(context, 130, paymentStartY + 70, 340, 340, 24, "#ffffff");
+    context.imageSmoothingEnabled = false;
     context.drawImage(
       paymentQr,
-      sourceX,
-      sourceY,
-      sourceSize,
-      sourceSize,
       145,
       paymentStartY + 85,
       310,
       310,
     );
+    context.imageSmoothingEnabled = true;
+  } else {
+    context.fillStyle = "#3f7168";
+    context.font = "700 24px system-ui, sans-serif";
+    context.fillText("Không cần chuyển khoản", 140, paymentStartY + 225);
   }
 
   context.fillStyle = "#557f8e";
   context.font = "800 21px system-ui, sans-serif";
-  context.fillText("QUÉT MÃ VIETQR", 515, paymentStartY + 105);
+  context.fillText(paymentQr ? "QUÉT QR · ĐÃ ĐIỀN SỐ TIỀN" : "THÔNG TIN NHẬN TIỀN", 515, paymentStartY + 105);
   context.fillStyle = "#2f3e46";
   context.font = "800 29px system-ui, sans-serif";
   context.fillText(payment.bankName, 515, paymentStartY + 151);
@@ -939,9 +953,9 @@ async function exportPersonDebtReportImage() {
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
     elements.debtReportButton.textContent = "Đã xuất ảnh ✓";
     elements.debtExportStatus.textContent = `Đã xuất báo cáo của ${report.personName}: còn nợ ${formatMoney(report.totalUnpaid)}.`;
-  } catch {
+  } catch (error) {
     elements.debtReportButton.textContent = "Không thể xuất";
-    elements.debtExportStatus.textContent = "Không thể tạo ảnh báo cáo. Hãy thử lại.";
+    elements.debtExportStatus.textContent = error?.message || "Không thể tạo ảnh báo cáo. Hãy thử lại.";
   }
 
   window.setTimeout(() => {
