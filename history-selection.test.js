@@ -94,6 +94,47 @@ test("status, person and year filters combine before pagination; all selects eve
   assert.equal(page.get("debt-bulk-actions").hidden, true);
 });
 
+test("reset filters restores default results, first page and clears selection without changing saved data", async (t) => {
+  const page = await openLedger(t, entries);
+  const defaultRows = page.rows();
+  const defaultStatus = page.get("debt-page-status").textContent;
+  const savedEntries = page.stored();
+  page.change("debt-person-filter", "an");
+  page.change("debt-year-filter", "2026");
+  page.change("debt-status-filter", "unpaid");
+  page.selectAll(true);
+  page.click("debt-page-next");
+  page.click("debt-filter-reset");
+  assert.deepEqual(page.rows(), defaultRows);
+  assert.equal(page.get("debt-page-status").textContent, defaultStatus);
+  assert.equal(page.get("debt-status-filter").value, "");
+  assert.doesNotMatch(page.get("debt-person-filter").innerHTML, / selected/);
+  assert.doesNotMatch(page.get("debt-year-filter").innerHTML, / selected/);
+  assert.equal(page.get("debt-bulk-actions").hidden, true);
+  assert.equal(page.get("debt-select-page").checked, false);
+  assert.equal(page.get("export-person-debt-image").disabled, true);
+  assert.deepEqual(page.stored(), savedEntries);
+  page.click("debt-filter-reset");
+  assert.deepEqual(page.rows(), defaultRows);
+});
+
+test("reset filters recovers from an empty result", async (t) => {
+  const page = await openLedger(t, [entry("unpaid")]);
+  page.change("debt-status-filter", "paid");
+  assert.equal(page.get("debt-filter-empty").hidden, false);
+  page.click("debt-filter-reset");
+  assert.deepEqual(page.rows(), ["unpaid"]);
+  assert.equal(page.get("debt-filter-empty").hidden, true);
+});
+
+test("reset filters is harmless with no saved entries", async (t) => {
+  const page = await openLedger(t, []);
+  page.click("debt-filter-reset");
+  assert.deepEqual(page.rows(), []);
+  assert.deepEqual(page.stored(), []);
+  assert.equal(page.get("debt-select-page").disabled, true);
+});
+
 test("unfiltered select all and deselect all work across pages", async (t) => {
   const page = await openLedger(t, entries);
   page.selectAll(true);

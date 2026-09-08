@@ -71,6 +71,7 @@ const elements = {
   debtFilter: document.querySelector("#debt-person-filter"),
   debtYearFilter: document.querySelector("#debt-year-filter"),
   debtStatusFilter: document.querySelector("#debt-status-filter"),
+  debtFilterReset: document.querySelector("#debt-filter-reset"),
   debtTableWrap: document.querySelector("#debt-table-wrap"),
   debtEmpty: document.querySelector("#debt-ledger-empty"),
   debtFilterEmpty: document.querySelector("#debt-filter-empty"),
@@ -1163,6 +1164,16 @@ elements.debtFilter.addEventListener("change", (event) => {
   debtPersonFilter = event.target.value;
   debtPage = 1;
   selectedDebtIds.clear();
+  renderDebtLedger();
+});
+
+elements.debtFilterReset.addEventListener("click", () => {
+  debtPersonFilter = "";
+  debtYearFilter = "";
+  debtStatusFilter = "";
+  debtPage = 1;
+  selectedDebtIds.clear();
+  clearDebtBulkFeedback();
   renderDebtLedger();
 });
 

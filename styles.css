@@ -466,6 +466,9 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .debt-import-actions { width: min(420px, 100%); justify-self: end; margin-top: 16px; }
 .debt-import-actions .confirm-dialog-submit:disabled { cursor: not-allowed; opacity: 0.48; transform: none; }
 .debt-filter-label { display: grid; gap: 6px; }
+.debt-filter-reset { min-height: 38px; padding: 8px 13px; color: var(--blue); background: var(--powder-blue); border: 1px solid rgba(85, 127, 142, 0.24); border-radius: 10px; cursor: pointer; font-size: 9px; font-weight: 800; white-space: nowrap; }
+.debt-filter-reset:hover { background: #d6e9eb; }
+.debt-filter-reset:focus-visible { outline: 3px solid rgba(85, 127, 142, 0.32); outline-offset: 2px; }
 .debt-person-filter-label { min-width: 170px; }
 .debt-year-filter-label { min-width: 120px; }
 .debt-status-filter-label { min-width: 150px; }
