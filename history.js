@@ -70,6 +70,7 @@ const elements = {
   debtSummaryList: document.querySelector("#debt-summary-list"),
   debtFilter: document.querySelector("#debt-person-filter"),
   debtYearFilter: document.querySelector("#debt-year-filter"),
+  debtStatusFilter: document.querySelector("#debt-status-filter"),
   debtTableWrap: document.querySelector("#debt-table-wrap"),
   debtEmpty: document.querySelector("#debt-ledger-empty"),
   debtFilterEmpty: document.querySelector("#debt-filter-empty"),
@@ -140,8 +141,9 @@ let records = readHistory();
 let debtEntries = readDebtEntries();
 let debtPersonFilter = "";
 let debtYearFilter = "";
+let debtStatusFilter = "";
 let debtPage = 1;
-let visibleDebtEntryIds = [];
+let filteredDebtEntryIds = [];
 const selectedDebtIds = new Set();
 let historyDateFrom = "";
 let historyDateTo = "";
@@ -293,6 +295,7 @@ function saveManualDebt(event) {
   }
   debtPersonFilter = normalizeName(entry.debtor);
   debtYearFilter = entry.date.slice(0, 4);
+  debtStatusFilter = "";
   debtPage = 1;
   selectedDebtIds.clear();
   closeManualDebtDialog();
@@ -366,14 +369,14 @@ function renderDebtRow(entry, index) {
 
 function renderDebtSelection() {
   const selectedCount = selectedDebtIds.size;
-  const selectedVisibleCount = visibleDebtEntryIds.filter((id) => selectedDebtIds.has(id)).length;
+  const selectedFilteredCount = filteredDebtEntryIds.filter((id) => selectedDebtIds.has(id)).length;
   elements.debtBulkActions.hidden = selectedCount === 0;
   elements.debtSelectionCount.textContent = `${selectedCount} khoản đã chọn`;
-  elements.debtSelectPage.disabled = visibleDebtEntryIds.length === 0;
-  elements.debtSelectPage.checked = visibleDebtEntryIds.length > 0
-    && selectedVisibleCount === visibleDebtEntryIds.length;
-  elements.debtSelectPage.indeterminate = selectedVisibleCount > 0
-    && selectedVisibleCount < visibleDebtEntryIds.length;
+  elements.debtSelectPage.disabled = filteredDebtEntryIds.length === 0;
+  elements.debtSelectPage.checked = filteredDebtEntryIds.length > 0
+    && selectedFilteredCount === filteredDebtEntryIds.length;
+  elements.debtSelectPage.indeterminate = selectedFilteredCount > 0
+    && selectedFilteredCount < filteredDebtEntryIds.length;
 }
 
 function focusDebtLedgerAfterBulkAction() {
@@ -413,20 +416,22 @@ function renderDebtYearFilter() {
 }
 
 function renderDebtLedger() {
-  const currentDebtIds = new Set(debtEntries.map(({ id }) => id));
-  selectedDebtIds.forEach((id) => {
-    if (!currentDebtIds.has(id)) selectedDebtIds.delete(id);
-  });
   renderDebtYearFilter();
   const yearEntries = filterDebtEntriesByYear(debtEntries, debtYearFilter);
   const summary = getDebtSummary(yearEntries);
   renderDebtFilter(summary);
-  const filteredEntries = debtPersonFilter
-    ? yearEntries.filter(({ debtor }) => normalizeName(debtor) === debtPersonFilter)
-    : yearEntries;
+  elements.debtStatusFilter.value = debtStatusFilter;
+  elements.debtStatusFilter.disabled = debtEntries.length === 0;
+  const filteredEntries = yearEntries.filter(({ debtor, status }) =>
+    (!debtPersonFilter || normalizeName(debtor) === debtPersonFilter)
+    && (!debtStatusFilter || status === debtStatusFilter));
+  filteredDebtEntryIds = filteredEntries.map(({ id }) => id);
+  const filteredIds = new Set(filteredDebtEntryIds);
+  selectedDebtIds.forEach((id) => {
+    if (!filteredIds.has(id)) selectedDebtIds.delete(id);
+  });
   const pagination = paginateDebtEntries(filteredEntries, debtPage, DEBT_PAGE_SIZE);
   debtPage = pagination.page;
-  visibleDebtEntryIds = pagination.items.map(({ id }) => id);
   const overview = getDebtOverview(yearEntries);
 
   elements.debtTotalUnpaid.textContent = formatMoney(overview.unpaidAmount);
@@ -709,6 +714,7 @@ function confirmDebtImport() {
   const importedCount = entriesToImport.length;
   debtPersonFilter = "";
   debtYearFilter = "";
+  debtStatusFilter = "";
   debtPage = 1;
   selectedDebtIds.clear();
   if (typeof elements.debtImportDialog.close === "function") {
@@ -1189,6 +1195,13 @@ elements.debtYearFilter.addEventListener("change", (event) => {
   renderDebtLedger();
 });
 
+elements.debtStatusFilter.addEventListener("change", (event) => {
+  debtStatusFilter = event.target.value;
+  debtPage = 1;
+  selectedDebtIds.clear();
+  renderDebtLedger();
+});
+
 elements.debtSummaryList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-debt-person]");
   if (!button) return;
@@ -1210,7 +1223,7 @@ elements.debtPageNext.addEventListener("click", () => {
 });
 
 elements.debtSelectPage.addEventListener("change", (event) => {
-  visibleDebtEntryIds.forEach((id) => {
+  filteredDebtEntryIds.forEach((id) => {
     if (event.target.checked) selectedDebtIds.add(id);
     else selectedDebtIds.delete(id);
   });

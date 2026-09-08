@@ -468,6 +468,7 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .debt-filter-label { display: grid; gap: 6px; }
 .debt-person-filter-label { min-width: 170px; }
 .debt-year-filter-label { min-width: 120px; }
+.debt-status-filter-label { min-width: 150px; }
 .debt-filter-label span { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .debt-filter-label select { height: 38px; padding: 0 31px 0 11px; background-color: #fffdf9; font-size: 10px; }
 .debt-overview { display: grid; grid-template-columns: 1.25fr 1.25fr 0.9fr 0.9fr; gap: 10px; margin: 0 0 15px; }

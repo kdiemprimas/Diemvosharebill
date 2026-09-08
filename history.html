@@ -129,6 +129,14 @@
                   <option value="">Tất cả năm</option>
                 </select>
               </label>
+              <label class="debt-filter-label debt-status-filter-label" for="debt-status-filter">
+                <span>Lọc trạng thái</span>
+                <select id="debt-status-filter">
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="unpaid">Chưa trả</option>
+                  <option value="paid">Đã trả</option>
+                </select>
+              </label>
               <button
                 class="debt-export-button debt-report-button"
                 id="export-person-debt-image"
@@ -172,7 +180,7 @@
               <thead>
                 <tr>
                   <th class="debt-select-cell" scope="col">
-                    <input id="debt-select-page" type="checkbox" aria-label="Chọn tất cả khoản trên trang này" />
+                    <input id="debt-select-page" type="checkbox" aria-label="Chọn tất cả khoản khớp bộ lọc trên mọi trang" title="Chọn tất cả khoản khớp bộ lọc trên mọi trang" />
                   </th>
                   <th scope="col">STT</th>
                   <th scope="col">Chủ nợ</th>
@@ -199,7 +207,7 @@
             <button class="debt-empty-add-button" id="open-manual-debt-empty" type="button">Thêm khoản nợ đầu tiên</button>
             <a href="./index.html">Chia một bill mới</a>
           </div>
-          <p class="debt-filter-empty" id="debt-filter-empty" hidden>Không có khoản nào của người này.</p>
+          <p class="debt-filter-empty" id="debt-filter-empty" hidden>Không có khoản nào khớp với bộ lọc đã chọn.</p>
         </section>
 
         <section class="history-section" aria-labelledby="history-heading">
