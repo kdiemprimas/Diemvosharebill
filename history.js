@@ -21,6 +21,7 @@ import {
   readDebtEntries,
   removeDebtEntries,
   removeDebtEntry,
+  updateDebtEntry,
   updateDebtStatuses,
   updateDebtStatus,
   upsertDebtEntries,
@@ -115,6 +116,10 @@ const elements = {
   openManualDebtEmpty: document.querySelector("#open-manual-debt-empty"),
   manualDebtDialog: document.querySelector("#manual-debt-dialog"),
   manualDebtForm: document.querySelector("#manual-debt-form"),
+  manualDebtEyebrow: document.querySelector("#manual-debt-eyebrow"),
+  manualDebtTitle: document.querySelector("#manual-debt-title"),
+  manualDebtDescription: document.querySelector("#manual-debt-description"),
+  saveManualDebt: document.querySelector("#save-manual-debt"),
   manualDebtCreditor: document.querySelector("#manual-debt-creditor"),
   manualDebtDebtor: document.querySelector("#manual-debt-debtor"),
   manualDebtAmount: document.querySelector("#manual-debt-amount"),
@@ -152,6 +157,8 @@ let historyPage = 1;
 let pendingDelete = null;
 let pendingDebtStatusUpdate = null;
 let pendingDebtImport = null;
+let pendingDebtEditId = null;
+let manualDebtOpener = null;
 
 const formatMoney = (value) => `${money.format(Math.round(value || 0))} ₫`;
 
@@ -209,7 +216,8 @@ function formatManualDebtAmount() {
   const input = elements.manualDebtAmount;
   const selectionStart = input.selectionStart ?? input.value.length;
   const trailingDigitCount = input.value.slice(selectionStart).replace(/\D/g, "").length;
-  input.value = formatDebtAmountInput(input.value);
+  const sign = pendingDebtEditId && /^[-−]/.test(input.value) ? "-" : "";
+  input.value = sign + formatDebtAmountInput(input.value);
 
   let caretPosition = input.value.length;
   let remainingTrailingDigits = trailingDigitCount;
@@ -227,10 +235,24 @@ function showManualDebtError(message, input) {
   input?.focus();
 }
 
-function openManualDebtDialog() {
+function openManualDebtDialog(entry = null) {
+  pendingDebtEditId = entry?.id ?? null;
+  manualDebtOpener = document.activeElement;
   elements.manualDebtForm.reset();
-  elements.manualDebtDate.value = getTodayDateKey();
-  elements.manualDebtStatus.value = "unpaid";
+  elements.manualDebtEyebrow.textContent = entry ? "Chỉnh sửa" : "Nhập tay";
+  elements.manualDebtTitle.textContent = entry ? "Sửa khoản nợ" : "Thêm một khoản nợ";
+  elements.manualDebtDescription.textContent = entry
+    ? "Cập nhật thông tin khoản này rồi bấm Lưu thay đổi."
+    : "Ghi lại người cần trả, người đã ứng tiền và số tiền của khoản này.";
+  elements.saveManualDebt.textContent = entry ? "Lưu thay đổi" : "Lưu khoản nợ";
+  elements.manualDebtCreditor.value = entry?.creditor ?? "";
+  elements.manualDebtDebtor.value = entry?.debtor ?? "";
+  elements.manualDebtAmount.value = entry
+    ? `${entry.amount < 0 ? "-" : ""}${formatDebtAmountInput(entry.amount)}`
+    : "";
+  elements.manualDebtDate.value = entry?.date ?? getTodayDateKey();
+  elements.manualDebtNote.value = entry?.note ?? "";
+  elements.manualDebtStatus.value = entry?.status ?? "unpaid";
   elements.manualDebtPersonOptions.innerHTML = getManualDebtPeople()
     .map((name) => `<option value="${escapeHtml(name)}"></option>`)
     .join("");
@@ -248,12 +270,27 @@ function closeManualDebtDialog() {
     elements.manualDebtDialog.close();
   } else {
     elements.manualDebtDialog.removeAttribute("open");
+    restoreManualDebtFocus();
   }
+}
+
+function restoreManualDebtFocus() {
+  const editedId = pendingDebtEditId;
+  const opener = manualDebtOpener;
+  pendingDebtEditId = null;
+  manualDebtOpener = null;
+  window.setTimeout(() => {
+    const editButtons = elements.debtList.querySelectorAll?.("[data-edit-debt-id]") ?? [];
+    const editButton = [...editButtons].find((button) => button.dataset.editDebtId === editedId);
+    const target = opener?.isConnected ? opener : editButton || elements.openManualDebt;
+    target.focus();
+  }, 0);
 }
 
 function saveManualDebt(event) {
   event.preventDefault();
   clearManualDebtErrors();
+  const editingId = pendingDebtEditId;
   const creditor = elements.manualDebtCreditor.value.trim();
   const debtor = elements.manualDebtDebtor.value.trim();
   const amount = parseDebtAmountInput(elements.manualDebtAmount.value);
@@ -264,22 +301,43 @@ function saveManualDebt(event) {
   if (normalizeName(creditor) === normalizeName(debtor)) {
     return showManualDebtError("Chủ nợ và người nợ cần là hai người khác nhau.", elements.manualDebtDebtor);
   }
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return showManualDebtError("Số tiền cần lớn hơn 0 ₫.", elements.manualDebtAmount);
+  if (!Number.isFinite(amount) || (editingId ? amount === 0 : amount <= 0)) {
+    return showManualDebtError(editingId ? "Số tiền cần khác 0 ₫." : "Số tiền cần lớn hơn 0 ₫.", elements.manualDebtAmount);
   }
   if (!date) return showManualDebtError("Hãy chọn ngày ghi nhận khoản nợ.", elements.manualDebtDate);
 
-  const generatedId = globalThis.crypto?.randomUUID?.()
-    || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const entry = createManualDebtEntry({
-    id: generatedId,
-    savedAt: new Date().toISOString(),
+  const changes = {
     creditor,
     debtor,
     amount,
     date,
     note: elements.manualDebtNote.value,
     status: elements.manualDebtStatus.value,
+  };
+  if (editingId) {
+    try {
+      debtEntries = updateDebtEntry(localStorage, editingId, changes);
+    } catch (error) {
+      const message = error?.code === "DEBT_ENTRY_NOT_FOUND"
+        ? "Khoản nợ này đã bị xóa. Hãy đóng biểu mẫu và kiểm tra lại sổ."
+        : error?.code === "DEBT_ENTRY_INVALID"
+          ? "Thông tin khoản nợ chưa hợp lệ. Hãy kiểm tra rồi thử lại."
+          : "Trình duyệt chưa thể lưu dữ liệu. Hãy kiểm tra quyền lưu trữ rồi thử lại.";
+      showManualDebtError(message);
+      return;
+    }
+    closeManualDebtDialog();
+    renderDebtLedger();
+    showDebtBulkFeedback({ state: "success", message: "Đã cập nhật khoản nợ thành công." });
+    return;
+  }
+
+  const generatedId = globalThis.crypto?.randomUUID?.()
+    || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const entry = createManualDebtEntry({
+    id: generatedId,
+    savedAt: new Date().toISOString(),
+    ...changes,
   });
   if (!entry) {
     showManualDebtError("Thông tin khoản nợ chưa hợp lệ. Hãy kiểm tra rồi thử lại.");
@@ -356,6 +414,14 @@ function renderDebtRow(entry, index) {
             data-toggle-debt-status="${escapeHtml(entry.id)}"
             aria-label="Đổi trạng thái khoản của ${escapeHtml(entry.debtor)}"
           >${isPaid ? "Đã trả" : "Chưa trả"}</button>
+          <button
+            class="debt-edit-button"
+            type="button"
+            data-edit-debt-id="${escapeHtml(entry.id)}"
+            aria-label="Sửa khoản của ${escapeHtml(entry.debtor)}, ${escapeHtml(formatMoney(entry.amount))}"
+            aria-haspopup="dialog"
+            aria-controls="manual-debt-dialog"
+          >Sửa</button>
           <button
             class="debt-delete-button"
             type="button"
@@ -1188,9 +1254,10 @@ elements.debtImportDialog.addEventListener("close", () => {
   window.setTimeout(() => elements.debtImportButton.focus(), 0);
 });
 
-elements.openManualDebt.addEventListener("click", openManualDebtDialog);
-elements.openManualDebtEmpty.addEventListener("click", openManualDebtDialog);
+elements.openManualDebt.addEventListener("click", () => openManualDebtDialog());
+elements.openManualDebtEmpty.addEventListener("click", () => openManualDebtDialog());
 elements.cancelManualDebt.addEventListener("click", closeManualDebtDialog);
+elements.manualDebtDialog.addEventListener("close", restoreManualDebtFocus);
 elements.manualDebtForm.addEventListener("submit", saveManualDebt);
 [
   elements.manualDebtCreditor,
@@ -1283,6 +1350,13 @@ elements.debtList.addEventListener("click", (event) => {
     } catch {
       return;
     }
+    return;
+  }
+
+  const editButton = event.target.closest("[data-edit-debt-id]");
+  if (editButton?.dataset.editDebtId) {
+    const entry = debtEntries.find(({ id }) => id === editButton.dataset.editDebtId);
+    if (entry) openManualDebtDialog(entry);
     return;
   }
 

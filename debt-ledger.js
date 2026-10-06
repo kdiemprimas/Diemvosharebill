@@ -131,6 +131,38 @@ export function createManualDebtEntry({
   });
 }
 
+export function createUpdatedDebtEntry(entry, changes = {}) {
+  const current = normalizeDebtEntry(entry);
+  if (!current || !changes || typeof changes !== "object" || Array.isArray(changes)) return null;
+
+  const editableFields = ["creditor", "debtor", "amount", "date", "note", "status"];
+  const edits = Object.fromEntries(
+    editableFields
+      .filter((field) => Object.hasOwn(changes, field))
+      .map((field) => [field, changes[field]]),
+  );
+  const candidate = { ...current, ...edits };
+  const creditor = cleanText(candidate.creditor, 80);
+  const debtor = cleanText(candidate.debtor, 80);
+  if (
+    !creditor || !debtor ||
+    normalizeNameKey(creditor) === normalizeNameKey(debtor) ||
+    !["paid", "unpaid"].includes(candidate.status)
+  ) return null;
+
+  const date = cleanDate(candidate.date);
+  if (!date) return null;
+  const parsedDate = new Date(`${date}T00:00:00`);
+  const [year, month, day] = date.split("-").map(Number);
+  if (
+    parsedDate.getFullYear() !== year ||
+    parsedDate.getMonth() + 1 !== month ||
+    parsedDate.getDate() !== day
+  ) return null;
+
+  return normalizeDebtEntry({ ...candidate, creditor, debtor, date });
+}
+
 export function parseDebtEntries(rawValue) {
   try {
     const parsed = JSON.parse(rawValue || "[]");
@@ -229,6 +261,30 @@ export function updateDebtStatus(storage = localStorage, entryId, status) {
   const records = readDebtEntries(storage).map((entry) =>
     entry.id === id ? { ...entry, status: nextStatus } : entry,
   );
+  storage.setItem(DEBT_STORAGE_KEY, JSON.stringify(records));
+  return records;
+}
+
+export function updateDebtEntry(storage = localStorage, entryId, changes = {}) {
+  const id = cleanText(entryId, 180);
+  const entries = parseDebtEntries(storage.getItem(DEBT_STORAGE_KEY));
+  const current = entries.find((entry) => entry.id === id);
+  if (!current) {
+    const error = new Error("Khoản tiền này không còn trong sổ. Hãy tải lại danh sách rồi thử lại.");
+    error.code = "DEBT_ENTRY_NOT_FOUND";
+    throw error;
+  }
+
+  const updated = createUpdatedDebtEntry(current, changes);
+  if (!updated) {
+    const error = new TypeError("Thông tin khoản tiền chưa hợp lệ. Hãy kiểm tra rồi thử lại.");
+    error.code = "DEBT_ENTRY_INVALID";
+    throw error;
+  }
+
+  const records = entries
+    .map((entry) => entry.id === id ? updated : entry)
+    .sort(sortDebtEntries);
   storage.setItem(DEBT_STORAGE_KEY, JSON.stringify(records));
   return records;
 }

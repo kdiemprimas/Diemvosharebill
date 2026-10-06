@@ -531,8 +531,8 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .debt-select-cell input:focus-visible { outline: 3px solid rgba(225, 123, 102, 0.38); outline-offset: 2px; }
 .debt-money-cell { color: var(--ink) !important; font-weight: 800; white-space: nowrap; }
 .debt-empty-note { color: #a99d98; font-style: italic; }
-.debt-row-actions { display: flex; align-items: center; gap: 6px; }
-.debt-status-button, .debt-delete-button { min-height: 30px; padding: 6px 9px; border-radius: 999px; cursor: pointer; font-size: 8px; font-weight: 800; white-space: nowrap; }
+.debt-row-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.debt-status-button, .debt-edit-button, .debt-delete-button { min-height: 30px; padding: 6px 9px; border-radius: 999px; cursor: pointer; font-size: 8px; font-weight: 800; white-space: nowrap; }
 .debt-pagination, .history-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 9px; margin-top: 13px; }
 .debt-pagination[hidden], .history-pagination[hidden] { display: none; }
 .debt-pagination p, .history-pagination p { min-width: 178px; margin: 0; color: var(--muted); font-size: 9px; font-weight: 700; text-align: center; }
@@ -543,7 +543,9 @@ footer { display: flex; justify-content: space-between; padding: 43px 4px; color
 .debt-status-button.is-unpaid { color: #a54e54; background: #fae5e2; border: 1px solid rgba(185, 86, 88, 0.22); }
 .debt-status-button.is-paid { color: #3f7168; background: #deeee7; border: 1px solid rgba(69, 121, 105, 0.2); }
 .debt-delete-button { color: #746d6a; background: transparent; border: 1px solid rgba(126, 119, 116, 0.18); }
-.debt-status-button:hover, .debt-delete-button:hover { filter: brightness(0.97); transform: translateY(-1px); }
+.debt-edit-button { color: var(--ink); background: var(--powder-blue); border: 1px solid rgba(85, 127, 142, 0.28); }
+.debt-status-button:hover, .debt-edit-button:hover, .debt-delete-button:hover { filter: brightness(0.97); transform: translateY(-1px); }
+.debt-status-button:focus-visible, .debt-edit-button:focus-visible, .debt-delete-button:focus-visible { outline: 3px solid rgba(85, 127, 142, 0.4); outline-offset: 2px; }
 .debt-ledger-empty, .debt-filter-empty { padding: 42px 20px; text-align: center; color: var(--muted); background: rgba(255, 253, 249, 0.65); border: 1px dashed rgba(121, 168, 183, 0.26); border-radius: 14px; }
 .debt-ledger-empty strong { color: var(--ink); font-size: 14px; }
 .debt-ledger-empty p { margin: 8px 0 17px; font-size: 10px; }

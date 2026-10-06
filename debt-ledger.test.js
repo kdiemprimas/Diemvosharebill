@@ -4,6 +4,7 @@ import {
   DEBT_STORAGE_KEY,
   createDebtEntries,
   createManualDebtEntry,
+  createUpdatedDebtEntry,
   filterDebtEntriesByYear,
   formatDebtAmountInput,
   getDebtOverview,
@@ -17,6 +18,7 @@ import {
   removeDebtEntry,
   updateDebtStatuses,
   updateDebtStatus,
+  updateDebtEntry,
   upsertDebtEntries,
   upsertImportedDebtEntries,
 } from "./debt-ledger.js";
@@ -90,6 +92,127 @@ test("không tạo khoản nhập tay thiếu dữ liệu hoặc có chủ nợ 
   assert.equal(createManualDebtEntry({ ...base, amount: 0 }), null);
   assert.equal(createManualDebtEntry({ ...base, debtor: "  DIEM " }), null);
   assert.equal(createManualDebtEntry({ ...base, date: "20/08/2026" }), null);
+});
+
+const debtToEdit = {
+  id: "bill-to-edit:1",
+  billId: "bill-to-edit",
+  creditor: "Diem Vo",
+  debtor: "Tin Nguyen",
+  amount: 25000,
+  date: "2026-08-20",
+  note: "Cơm trưa",
+  status: "paid",
+  savedAt: "2026-08-20T10:00:00.000Z",
+};
+
+test("sửa thông tin khoản tiền giữ mã, bill gốc và thời điểm ghi nhận", () => {
+  const original = Object.freeze({ ...debtToEdit });
+  const updated = createUpdatedDebtEntry(original, {
+    creditor: "  Son   Vo ",
+    debtor: " An Nguyen ",
+    amount: "48.500",
+    date: "2026-08-21",
+    note: "  Vé xem phim   cuối tuần ",
+    id: "replacement",
+    billId: "another-bill",
+    savedAt: "2026-08-22T10:00:00.000Z",
+  });
+
+  assert.deepEqual(updated, {
+    ...debtToEdit,
+    creditor: "Son Vo",
+    debtor: "An Nguyen",
+    amount: 48500,
+    date: "2026-08-21",
+    note: "Vé xem phim cuối tuần",
+  });
+  assert.deepEqual(original, debtToEdit);
+});
+
+test("sửa một trường giữ thông tin còn lại và chỉ đổi trạng thái khi có yêu cầu", () => {
+  assert.deepEqual(createUpdatedDebtEntry(debtToEdit, { note: "" }), {
+    ...debtToEdit,
+    note: "",
+  });
+  assert.deepEqual(createUpdatedDebtEntry(debtToEdit, { status: "unpaid" }), {
+    ...debtToEdit,
+    status: "unpaid",
+  });
+  assert.equal(createUpdatedDebtEntry(debtToEdit, { status: "invalid" }), null);
+});
+
+test("sửa khoản tiền cho phép giữ hoặc thay đổi số âm từ dữ liệu nhập Excel", () => {
+  const original = { ...debtToEdit, amount: -12000 };
+  assert.equal(createUpdatedDebtEntry(original, { note: "Hoàn tiền" }).amount, -12000);
+  assert.equal(createUpdatedDebtEntry(original, { amount: "−18.000" }).amount, -18000);
+});
+
+test("không nhận sửa thiếu tên, trùng người, số tiền không an toàn hoặc ngày không tồn tại", () => {
+  const invalidChanges = [
+    { creditor: " " },
+    { debtor: " " },
+    { debtor: "  DIEM   VO " },
+    { amount: 0 },
+    { amount: Number.MAX_SAFE_INTEGER },
+    { amount: -Number.MAX_SAFE_INTEGER },
+    { amount: Infinity },
+    { date: "20/08/2026" },
+    { date: "2026-02-29" },
+    { date: "2026-04-31" },
+    null,
+  ];
+  invalidChanges.forEach((changes) => {
+    assert.equal(createUpdatedDebtEntry(debtToEdit, changes), null);
+  });
+  assert.equal(createUpdatedDebtEntry(null, { amount: 30000 }), null);
+  assert.equal(createUpdatedDebtEntry(debtToEdit, { date: "2028-02-29" }).date, "2028-02-29");
+});
+
+test("lưu sửa đúng một khoản, giữ các khoản cùng bill và sắp xếp lại theo ngày", () => {
+  const sibling = { ...debtToEdit, id: "bill-to-edit:2", debtor: "Son Vo", amount: 35000 };
+  const other = { ...debtToEdit, id: "other:1", billId: "other", date: "2026-08-21" };
+  const storage = createMemoryStorage({
+    [DEBT_STORAGE_KEY]: JSON.stringify([other, sibling, debtToEdit]),
+  });
+
+  const updated = updateDebtEntry(storage, debtToEdit.id, { amount: 48000, date: "2026-08-22" });
+
+  assert.deepEqual(updated.map(({ id }) => id), [debtToEdit.id, other.id, sibling.id]);
+  assert.deepEqual(updated.find(({ id }) => id === sibling.id), sibling);
+  assert.deepEqual(updated.find(({ id }) => id === other.id), other);
+  assert.deepEqual(updated[0], { ...debtToEdit, amount: 48000, date: "2026-08-22" });
+  assert.deepEqual(parseDebtEntries(storage.getItem(DEBT_STORAGE_KEY)), updated);
+  assert.equal(getDebtOverview(updated).paidAmount, 108000);
+});
+
+test("không ghi dữ liệu nếu khoản đã bị xóa hoặc thông tin sửa không hợp lệ", () => {
+  const raw = JSON.stringify([debtToEdit]);
+  const storage = createMemoryStorage({ [DEBT_STORAGE_KEY]: raw });
+
+  assert.throws(() => updateDebtEntry(storage, "missing", { amount: 30000 }), {
+    code: "DEBT_ENTRY_NOT_FOUND",
+  });
+  assert.throws(() => updateDebtEntry(storage, debtToEdit.id, { amount: 0 }), {
+    code: "DEBT_ENTRY_INVALID",
+  });
+  assert.equal(storage.getItem(DEBT_STORAGE_KEY), raw);
+});
+
+test("lỗi đọc hoặc lưu trữ khi sửa được báo ra và dữ liệu cũ không thay đổi", () => {
+  const raw = JSON.stringify([debtToEdit]);
+  const readError = new Error("Storage read denied");
+  const writeError = new Error("Storage quota exceeded");
+  const storage = createMemoryStorage({ [DEBT_STORAGE_KEY]: raw });
+  assert.throws(() => updateDebtEntry({
+    getItem() { throw readError; },
+    setItem() { assert.fail("Không được ghi khi chưa đọc được dữ liệu"); },
+  }, debtToEdit.id, { amount: 30000 }), (error) => error === readError);
+  assert.throws(() => updateDebtEntry({
+    getItem: storage.getItem,
+    setItem() { throw writeError; },
+  }, debtToEdit.id, { amount: 30000 }), (error) => error === writeError);
+  assert.equal(storage.getItem(DEBT_STORAGE_KEY), raw);
 });
 
 test("tạo từng khoản nợ từ kết quả chia và bỏ người đã trả bill", () => {

@@ -376,7 +376,7 @@
           aria-hidden="true"
         />
         <div class="confirm-dialog-copy">
-          <span class="confirm-dialog-eyebrow">Nhập tay</span>
+          <span class="confirm-dialog-eyebrow" id="manual-debt-eyebrow">Nhập tay</span>
           <h2 id="manual-debt-title">Thêm một khoản nợ</h2>
           <p id="manual-debt-description">
             Ghi lại người cần trả, người đã ứng tiền và số tiền của khoản này.
@@ -394,7 +394,7 @@
           <datalist id="manual-debt-person-options"></datalist>
           <label class="field" for="manual-debt-amount">
             <span>Số tiền (₫) <b aria-hidden="true">*</b></span>
-            <input id="manual-debt-amount" type="text" inputmode="numeric" pattern="[0-9.]*" maxlength="19" autocomplete="off" placeholder="Ví dụ: 50.000" required aria-required="true" aria-describedby="manual-debt-error" />
+            <input id="manual-debt-amount" type="text" inputmode="numeric" pattern="-?[0-9.]*" maxlength="20" autocomplete="off" placeholder="Ví dụ: 50.000" required aria-required="true" aria-describedby="manual-debt-error" />
           </label>
           <label class="field" for="manual-debt-date">
             <span>Ngày ghi nhận <b aria-hidden="true">*</b></span>
@@ -414,7 +414,7 @@
           <p class="save-debt-error manual-debt-error" id="manual-debt-error" role="alert" aria-live="assertive"></p>
           <div class="confirm-dialog-actions">
             <button class="confirm-dialog-cancel" id="cancel-manual-debt" type="button">Hủy</button>
-            <button class="confirm-dialog-submit" type="submit">Lưu khoản nợ</button>
+            <button class="confirm-dialog-submit" id="save-manual-debt" type="submit">Lưu khoản nợ</button>
           </div>
         </form>
       </div>
