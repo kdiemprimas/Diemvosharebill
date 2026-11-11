@@ -293,7 +293,7 @@ export function getDebtReportPaymentQrUrl(report) {
   const payment = getDebtReportPaymentDetails();
   // qr_only preserves the full QR and its quiet zone when placed on the report.
   // https://vietqr.io/danh-sach-api/link-tao-ma-nhanh/
-  const url = new URL(`https://img.vietqr.io/image/${payment.bankName}-${payment.accountNumber}-qr_only.png`);
+  const url = new URL(`https://img.vietqr.io/image/${payment.bankName}-${payment.accountNumber}-qr_only.svg`);
   url.searchParams.set("amount", String(amount));
   url.searchParams.set("addInfo", getDebtReportTransferContent(report));
   return url.href;

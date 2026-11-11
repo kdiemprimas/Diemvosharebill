@@ -25,7 +25,7 @@ test("QR nhận đúng tổng chưa trả theo người và năm đang xuất", 
   const report = createPersonDebtReport(entries, "An", "2026");
   const url = new URL(getDebtReportPaymentQrUrl(report));
   assert.equal(url.origin, "https://img.vietqr.io");
-  assert.equal(url.pathname, "/image/BIDV-7101574886-qr_only.png");
+  assert.equal(url.pathname, "/image/BIDV-7101574886-qr_only.svg");
   assert.equal(url.searchParams.get("amount"), "54000");
   assert.equal(new URL(getDebtReportPaymentQrUrl(createPersonDebtReport(entries, "An"))).searchParams.get("amount"), "66000");
   entries[0].status = "paid";
